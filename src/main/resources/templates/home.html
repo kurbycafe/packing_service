@@ -9,14 +9,6 @@
 <div th:replace="fragments/header :: header "></div>
 
 <div class="container mt-5">
-    <p>패킹 담당자 선택</p>
-    <select id="packerId" class="form-control mb-3" style="width: 300px; font-size: 20px;">
-        <option value="0" selected>Landric</option>
-        <option value="1">Ravi</option>
-        <option value="2">Park, Hyeonsan</option>
-        <option value="3">Kim, TaeHyeong</option>
-        <option value="4">Hwang, Hyeonho</option>
-    </select>
 
     <input id="orderBarcode" placeholder="order number scan" style="width: 300px; font-size: 20px;"/>
     <input id="productBarcode" placeholder="product barcode scan" style="width: 300px; font-size: 20px;" disabled />
@@ -80,6 +72,8 @@ $(function () {
                 <td>${item.quantity}</td><td>${item.scannedCount}</td>
                 <td>${isDone ? '완료' : '진행 중'}</td>
                 <td><button class="btn btn-sm btn-primary increase-btn" data-index="${i}">+1 오류로 추가</button></td>
+                <td><button class="btn btn-sm btn-primary barcode-error-btn" data-index="${i}">바코드 오류</button></td>
+                <td><button class="btn btn-sm btn-primary complete-btn" data-index="${i}">스캔 완료</button></td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -122,28 +116,53 @@ $(function () {
         }
     });
 
+    $('#orderItems').on('click', '.barcode-error-btn', function () {
+        console.log('Barcode Error button clicked');
+        const index = $(this).data('index');
+        console.log(orderItems);
+        //팝업 띄우고 해당 상품 이름은 보여주고 바코드 입력받기
+        const item = orderItems[index];
+        if (!item) return alert('상품 정보를 찾을 수 없습니다.');
+        const manualBarcode = prompt(`바코드 오류로 추가할 상품: "${item.name}"\n바코드를 수동으로 입력하세요:`);
+        if (manualBarcode) {
+            if (!scannedErrorItems.some(i => i.sku === manualBarcode)) {
+                scannedErrorItems.push({ sku: manualBarcode, name: item.name });
+                alert(`바코드 "${manualBarcode}"가 오류 항목으로 추가되었습니다.`);
+            } else {
+                alert(`바코드 "${manualBarcode}"는 이미 오류 항목에 추가되어 있습니다.`);
+            }
+        }
+        
+    });
+
+    $('#orderItems').on('click', '.complete-btn', function () {
+        const index = $(this).data('index');
+        const item = orderItems[index];
+        if (!item) return alert('상품 정보를 찾을 수 없습니다.');
+        item.scannedCount = item.quantity;
+        renderOrderItems();
+    });
     $('#saveButton').click(function () {
         const orderNumber = orderItems[0]?.orderNumber;
         if (!orderNumber) return;
-
+        // 스캔된 항목들 리스트
         const scannedItems = orderItems.map(item => ({
-            packerId: $('#packerId').val(),
             orderNumber,
             productName: item.name,
             productQ: item.quantity,
             productSku: item.sku,
             scannedCount: item.scannedCount
         }));
-
-        const scannedErrorItemss = scannedErrorItems.map(item => ({
+        // 스캔 오류 항목들 리스트 (바코드 없이 수동 추가된 항목들)
+        const scannedErrorItems = scannedErrorItems.map(item => ({
             orderNumber,
             productName: item.name,
             productSku: item.sku
         }));
-
+        // AJAX로 데이터 전송   
         const payload = {
             scannedItems,
-            scannedErrorItems: scannedErrorItemss
+            scannedErrorItems  
         };
 
         $.ajax({
@@ -164,7 +183,7 @@ $(function () {
             }
         });
     });
-
+    // Highlight row animation
     function highlightRow(barcode) {
         if (!barcode) return;
         const $row = $("#" + CSS.escape(barcode));
