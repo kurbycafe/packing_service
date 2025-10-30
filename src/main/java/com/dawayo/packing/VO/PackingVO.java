@@ -32,6 +32,8 @@ public class PackingVO {
     private Long packerId;
 
     private String orderNumber;
+    private String mhd;
+
     private String productName;
     private String productSku;
     private String scannedCount;
