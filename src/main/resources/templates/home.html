@@ -79,7 +79,7 @@ $(function () {
         const orderNumber = orderItems[0].orderNumber;
 
         let html = `<h3>Order #${orderNumber}</h3><table class="table table-bordered"><thead><tr>
-            <th>상품명</th><th>유통기한</th><th>SKU</th><th>주문 수량</th><th>스캔된 수량</th><th>상태</th><th>조정</th><th>오류추가</th>
+            <th>상품명</th><th>유통기한</th><th>SKU</th><th>주문 수량</th><th>스캔된 수량</th><th>상태</th><th>조정</th>   <th>오류로 +1</th><th>처리</th>
             </tr></thead><tbody>`;
 
         orderItems.forEach((item, i) => {
@@ -95,6 +95,7 @@ $(function () {
                 <td>${isDone ? '완료' : '진행 중'}</td>
                 <td><button class="btn btn-sm btn-primary scan-all-btn" data-index="${i}">완료</button></td>
                 <td><button class="btn btn-sm btn-primary increase-btn" data-index="${i}">+1 오류로 추가</button></td>
+                 <td><button class="btn btn-sm btn-primary process-btn" data-index="${i}">처리</button></td>
             </tr>`;
         });
 
@@ -147,6 +148,55 @@ $(function () {
             alert(`상품 "${item.name}"는 이미 모두 스캔되었습니다.`);
         }
     });
+
+    // -------------------
+    // 해당 상품 처리
+    // -------------------
+
+    // $('#orderItems').on('click', '.process-btn', function () {
+    //     const index = $(this).data('index');
+    //     const item = orderItems[index];
+    //     if (!item) return alert('상품 정보를 찾을 수 없습니다.');
+
+    //     const popupHtml = `
+    //         <div>
+    //             <h3>상품 처리</h3>
+    //             <p>상품명: ${item.name}</p>
+    //             <p>주문 수량: ${item.quantity}</p>
+    //             <p>스캔된 수량: ${item.scannedCount}</p>
+
+    //             <input type="number" id="refundQuantity" placeholder="환불 수량" min="1" max="${item.scannedCount}">
+    //              <button id="refundBtn">환불 처리</button>
+    //             <input type="number" id="replaceQuantity" placeholder="대체 수량" min="1" max="${item.scannedCount}">
+               
+    //             <button id="replaceBtn">대체 처리</button>
+    //         </div>
+    //     `;
+    //     showModal('상품 처리', popupHtml);
+    // });
+    // showModal = function(title, content) {
+    //     const modalHtml = `
+    //         <div class="modal" tabindex="-1" role="dialog" style="display:block; background: rgba(0,0,0,0.5);">
+    //           <div class="modal-dialog" role="document">
+    //             <div class="modal-content">
+    //               <div class="modal-header">
+    //                 <h5 class="modal-title">${title}</h5>
+    //                 <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModalBtn">
+    //                   <span aria-hidden="true">&times;</span>
+    //                 </button>
+    //               </div>
+    //               <div class="modal-body">
+    //                 ${content}
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     `;
+    //     $('body').append(modalHtml);
+    //     $('#closeModalBtn').click(function() {
+    //         $('.modal').remove();
+    //     });
+
+    // };
 
     // -------------------
     // 해당 상품 전체 스캔 처리
