@@ -76,6 +76,17 @@ public String loginPost(UserVO userVO, HttpServletRequest request, HttpServletRe
     return "redirect:/";
 }
 
+@PostMapping("/logout")
+public String logout(HttpServletRequest request) {
+    HttpSession session = request.getSession(false); 
+    if (session != null) {
+        session.invalidate(); 
+        System.err.println("Session invalidated, user logged out.");
+    }
+    return "redirect:/"; 
+}
+
+
     @GetMapping("/mypage")
     public String myPage(HttpServletRequest req, Model model) {
     HttpSession session = req.getSession(false);

@@ -13,15 +13,17 @@ public class AdminHomeRepository {
     private EntityManager entityManager;
 
     //count packed items on today group by orderNumber
-    public Long countPackedItemsToday() {
-        String today = java.time.LocalDate.now().toString();
-
+    public Long countPackedOrdersbyDate(String date) {
+        
         Long count = entityManager.createQuery(
-                "SELECT COUNT(p) FROM PackingVO p WHERE p.packingDate = :today", Long.class)
-                .setParameter("today", today)
+                "SELECT COUNT(DISTINCT p.orderNumber) FROM PackingVO p WHERE p.packingDate = :today", Long.class)
+                .setParameter("today", date)
                 .getSingleResult();
         return count;
     }
+
+    
+
     public Long countPackedItemsThisWeek() {
         String startOfWeek = java.time.LocalDate.now()
                 .with(java.time.DayOfWeek.MONDAY)
