@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminHomeService {
 
     private final AdminHomeRepository adminHomeRepository;
-
+    
     public Map<String, Long> getPackingStats() {
         Long todayCount = adminHomeRepository.countPackedItemsToday();
         Long weekCount = adminHomeRepository.countPackedItemsThisWeek();

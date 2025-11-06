@@ -220,8 +220,12 @@ $(function () {
     // 저장 버튼 클릭 시
     // -------------------
     $('#saveButton').click(function () {
-        const orderNumber = orderItems[0]?.orderNumber;
-        if (!orderNumber) return;
+        //check if tscanning is complete
+        const isScanningComplete = orderItems.every(item => item.scannedCount === item.quantity);
+        if (!isScanningComplete) {
+            alert('모든 상품이 스캔되지 않았습니다.');
+            return false;
+        }
 
         const scannedItems = orderItems.map(item => ({
             orderNumber,
@@ -293,6 +297,11 @@ $(function () {
         } else {
             $bar.addClass('progress-bar-striped progress-bar-animated').removeClass('bg-success');
         }
+        //if progrss is completed then click save button automatically
+        if (progress === 100) {
+            $('#saveButton').click();
+        }
+        
     }
 });
 </script>
