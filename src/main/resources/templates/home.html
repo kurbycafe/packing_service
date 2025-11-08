@@ -1,309 +1,258 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>Scan & Pack</title>
-    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <meta charset="UTF-8">
+  <title>Scan & Pack</title>
+  <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .highlight { animation: blink 0.7s alternate infinite; }
+    @keyframes blink { from { background-color: #fff3cd; } to { background-color: #ffeeba; } }
+    #summaryInfo { font-size: 18px; font-weight: bold; }
+  </style>
 </head>
 <body>
-<div th:replace="fragments/header :: header "></div>
-
 <div class="container mt-5">
+  <h2>📦 Scan & Pack</h2>
 
-    <div class="progress mb-4" style="height: 25px;">
-        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
-             style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+  <!-- 진행률 -->
+  <div class="progress mb-4" style="height: 25px;">
+    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+  </div>
+
+  <!-- 입력 -->
+  <input id="orderBarcode" class="form-control mb-2" placeholder="주문번호 스캔" style="font-size:20px;">
+  <input id="productBarcode" class="form-control mb-2" placeholder="상품 바코드 스캔" style="font-size:20px;" disabled>
+
+  <div id="loadingIndicator" style="display:none; color:#007bff; font-weight:bold;">⏳ 주문 정보를 불러오는 중...</div>
+  <div id="orderItems" class="mt-4"></div>
+  <button id="saveButton" class="btn btn-success mt-3">💾 저장</button>
+</div>
+
+<!-- 처리 모달 -->
+<div class="modal fade" id="processModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">상품 처리</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body" id="processModalBody"></div>
     </div>
-
-    <input id="orderBarcode" placeholder="order number scan" style="width: 300px; font-size: 20px;"/>
-    <input id="productBarcode" placeholder="product barcode scan" style="width: 300px; font-size: 20px;" disabled />
-
-    <div id="loadingIndicator" style="display: none; font-weight: bold; color: #007bff; margin-top: 20px;">
-        ⏳ 주문 정보를 불러오는 중입니다...
-    </div>
-
-    <div id="orderItems" style="margin-top:30px;"></div>
-    <button id="saveButton" class="btn btn-success mt-3">Save</button>
+  </div>
 </div>
 
 <script>
 $(function () {
-    let orderItems = [];
-    let scannedErrorItems = [];
+  let orderItems = [];
+  let startTime = null;
+  const soundSuccess = new Audio('/sounds/success.mp3');
+  const soundError = new Audio('/sounds/error.mp3');
+  const tts = window.speechSynthesis;
 
-    // -------------------
-    // 주문 번호 스캔
-    // -------------------
-    $('#orderBarcode').on('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const orderNumber = $(this).val().trim();
-            if (!orderNumber) return;
+  // ---------------- 주문 스캔 ----------------
+  $('#orderBarcode').keydown(function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const orderNumber = $(this).val().trim();
+      if (!orderNumber) return;
+      $('#loadingIndicator').show();
 
-            $('#loadingIndicator').show();
+      $.post('/api/getOrderDetail', { orderNumber }, function(response) {
+        $('#loadingIndicator').hide();
+        try { response = typeof response === 'string' ? JSON.parse(response) : response; } catch { alert('응답 오류'); return; }
 
-            $.post('/api/getOrderDetail', { orderNumber }, function (response) {
-                $('#loadingIndicator').hide();
-
-                if (typeof response === 'string') {
-                    try {
-                        response = JSON.parse(response);
-                    } catch (e) {
-                        $('#orderItems').html(`<p style="color:red;">응답 오류: ${response}</p>`);
-                        return;
-                    }
-                }
-
-                if (response.length > 0) {
-                    $('#orderBarcode').prop('disabled', true);
-                    $('#productBarcode').prop('disabled', false).focus();
-                    orderItems = response.map((item, index) => ({ ...item, scannedCount: 0, index }));
-                    renderOrderItems();
-                    updateProgressBar();
-                } else {
-                    $('#orderItems').html(`<p style="color:red;">주문을 찾을 수 없습니다.</p>`);
-                }
-            }).fail(xhr => {
-                $('#loadingIndicator').hide();
-                $('#orderItems').html(`<p style="color:red;">오류 발생: ${xhr.responseText}</p>`);
-            });
-        }
-    });
-
-    // -------------------
-    // 테이블 렌더링
-    // -------------------
-    function renderOrderItems() {
-        if (!orderItems.length) return $('#orderItems').html('');
-        const orderNumber = orderItems[0].orderNumber;
-
-        let html = `<h3>Order #${orderNumber}</h3><table class="table table-bordered"><thead><tr>
-            <th>상품명</th><th>유통기한</th><th>SKU</th><th>주문 수량</th><th>스캔된 수량</th><th>상태</th><th>조정</th>   <th>오류로 +1</th><th>처리</th>
-            </tr></thead><tbody>`;
-
-        orderItems.forEach((item, i) => {
-            const isDone = item.scannedCount >= item.quantity;
-            const statusClass = isDone ? 'table-success' : 'table-warning';
-            const rowId = item.sku ? item.sku : `no-sku-${i}`;
-            html += `<tr class="${statusClass}" id="${CSS.escape(rowId)}">
-                <td>${item.name}</td>
-                <td>${item.MHD ?? ''}</td>
-                <td>${item.sku ?? 'N/A'}</td>
-                <td>${item.quantity}</td>
-                <td>${item.scannedCount}</td>
-                <td>${isDone ? '완료' : '진행 중'}</td>
-                <td><button class="btn btn-sm btn-primary scan-all-btn" data-index="${i}">완료</button></td>
-                <td><button class="btn btn-sm btn-primary increase-btn" data-index="${i}">+1 오류로 추가</button></td>
-                 <td><button class="btn btn-sm btn-primary process-btn" data-index="${i}">처리</button></td>
-            </tr>`;
-        });
-
-        html += '</tbody></table>';
-        $('#orderItems').html(html);
+        if (response.length) {
+          startTime = Date.now();
+          orderItems = response.map((item, i) => ({ ...item, scannedCount: 0, index: i }));
+          renderOrderItems();
+          updateProgressBar();
+          $('#orderBarcode').prop('disabled', true);
+          $('#productBarcode').prop('disabled', false).focus();
+          localStorage.setItem('scanProgress', JSON.stringify(orderItems));
+        } else alert('주문 없음');
+      });
     }
+  });
 
-    // -------------------
-    // 상품 바코드 스캔
-    // -------------------
-    $('#productBarcode').on('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
+  // ---------------- 상품 스캔 ----------------
+  $('#productBarcode').keydown(function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      let code = $(this).val().trim().replace(/^0+/, '');
+      $(this).val('');
+      if (!code) return;
 
-            const barcode = $(this).val().trim();
-            $(this).val('');
-            if (!barcode) return alert("바코드를 입력해주세요.");
+      const found = orderItems.find(i => i.sku === code || i.name.includes(code));
+      if (!found) {
+        playSound(false);
+        return alert('주문 내역에 없는 상품');
+      }
 
-            const foundItem = orderItems.find(item => item.sku && item.sku === barcode);
-            if (!foundItem) return alert('주문 내역에 없는 상품이거나 SKU 정보가 없습니다.');
+      if (found.scannedCount >= found.quantity) {
+        playSound(false);
+        return alert(`"${found.name}" 완료됨`);
+      }
 
-            if (foundItem.scannedCount < foundItem.quantity) {
-                foundItem.scannedCount++;
-                renderOrderItems();
-                highlightRow(barcode);
-
-                updateProgressBar(); // ✅ scannedCount 증가 후 호출
-            } else {
-                alert(`상품 "${foundItem.name}"는 이미 모두 스캔되었습니다.`);
-            }
-        }
-    });
-
-    // -------------------
-    // 오류로 +1 수동 추가
-    // -------------------
-    $('#orderItems').on('click', '.increase-btn', function () {
-        const index = $(this).data('index');
-        const item = orderItems[index];
-        if (!item) return alert('상품 정보를 찾을 수 없습니다.');
-
-        if (item.scannedCount < item.quantity) {
-            if (!scannedErrorItems.some(i => i.sku === item.sku)) {
-                scannedErrorItems.push({ sku: item.sku, name: item.name });
-            }
-            item.scannedCount++;
-            renderOrderItems();
-            updateProgressBar(); // ✅ 진행률 업데이트
-        } else {
-            alert(`상품 "${item.name}"는 이미 모두 스캔되었습니다.`);
-        }
-    });
-
-    // -------------------
-    // 해당 상품 처리
-    // -------------------
-
-    // $('#orderItems').on('click', '.process-btn', function () {
-    //     const index = $(this).data('index');
-    //     const item = orderItems[index];
-    //     if (!item) return alert('상품 정보를 찾을 수 없습니다.');
-
-    //     const popupHtml = `
-    //         <div>
-    //             <h3>상품 처리</h3>
-    //             <p>상품명: ${item.name}</p>
-    //             <p>주문 수량: ${item.quantity}</p>
-    //             <p>스캔된 수량: ${item.scannedCount}</p>
-
-    //             <input type="number" id="refundQuantity" placeholder="환불 수량" min="1" max="${item.scannedCount}">
-    //              <button id="refundBtn">환불 처리</button>
-    //             <input type="number" id="replaceQuantity" placeholder="대체 수량" min="1" max="${item.scannedCount}">
-               
-    //             <button id="replaceBtn">대체 처리</button>
-    //         </div>
-    //     `;
-    //     showModal('상품 처리', popupHtml);
-    // });
-    // showModal = function(title, content) {
-    //     const modalHtml = `
-    //         <div class="modal" tabindex="-1" role="dialog" style="display:block; background: rgba(0,0,0,0.5);">
-    //           <div class="modal-dialog" role="document">
-    //             <div class="modal-content">
-    //               <div class="modal-header">
-    //                 <h5 class="modal-title">${title}</h5>
-    //                 <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModalBtn">
-    //                   <span aria-hidden="true">&times;</span>
-    //                 </button>
-    //               </div>
-    //               <div class="modal-body">
-    //                 ${content}
-    //                 </div>
-    //             </div>
-    //         </div>
-    //     `;
-    //     $('body').append(modalHtml);
-    //     $('#closeModalBtn').click(function() {
-    //         $('.modal').remove();
-    //     });
-
-    // };
-
-    // -------------------
-    // 해당 상품 전체 스캔 처리
-    // -------------------
-    $('#orderItems').on('click', '.scan-all-btn', function () {
-        const index = $(this).data('index');
-        const item = orderItems[index];
-
-        if (!item) return alert('상품 정보를 찾을 수 없습니다.');
-
-        if (item.scannedCount < item.quantity) {
-            item.scannedCount = item.quantity;
-            renderOrderItems();
-            updateProgressBar(); // ✅ 진행률 업데이트
-        } else {
-            alert(`상품 "${item.name}"는 이미 모두 스캔되었습니다.`);
-        }
-    });
-
-    // -------------------
-    // 저장 버튼 클릭 시
-    // -------------------
-    $('#saveButton').click(function () {
-        //check if tscanning is complete
-        const isScanningComplete = orderItems.every(item => item.scannedCount === item.quantity);
-        if (!isScanningComplete) {
-            alert('모든 상품이 스캔되지 않았습니다.');
-            return false;
-        }
-
-        const scannedItems = orderItems.map(item => ({
-            orderNumber,
-            mhd: item.MHD, 
-            productName: item.name,
-            productQ: item.quantity,
-            productSku: item.sku,
-            scannedCount: item.scannedCount
-        }));
-        console.log(scannedItems);
-
-        const errorItemsPayload = scannedErrorItems.map(item => ({
-            orderNumber,
-            productName: item.name,
-            productSku: item.sku
-        }));
-
-        const payload = { scannedItems, scannedErrorItems: errorItemsPayload };
-
-        $.ajax({
-            url: '/api/saveScannedItems',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            success: function () {
-                alert('저장되었습니다.');
-                $('#orderBarcode').prop('disabled', false).val('').focus();
-                $('#productBarcode').prop('disabled', true).val('');
-                $('#orderItems').html('');
-                orderItems = [];
-                scannedErrorItems = [];
-                updateProgressBar(); // ✅ 초기화
-            },
-            error: function (xhr) {
-                alert('저장 오류: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // -------------------
-    // 행 하이라이트 효과
-    // -------------------
-    function highlightRow(barcode) {
-        if (!barcode) return;
-        const $row = $("#" + CSS.escape(barcode));
-        if ($row.length === 0) return;
-
-        $row.addClass("table-warning").fadeTo(100, 0.1).fadeTo(200, 1.0, function () {
-            setTimeout(() => $row.removeClass("table-warning"), 1000);
-        });
+      found.scannedCount++;
+      playSound(true);
+      speak(`${found.name} 완료`);
+      renderOrderItems();
+      highlightRow(found.sku);
+      updateProgressBar();
+      localStorage.setItem('scanProgress', JSON.stringify(orderItems));
     }
+  });
 
-    // -------------------
-    // 진행률 표시 업데이트
-    // -------------------
-    function updateProgressBar() {
-        const itemsArray = Object.values(orderItems);
+  // ---------------- 테이블 렌더링 ----------------
+  function renderOrderItems() {
+    let html = `<table class="table table-bordered"><thead><tr>
+      <th>상품 이미지</th><th>상품명</th><th>유통기한</th><th>SKU</th>
+      <th>개별 가격</th><th>주문수량</th><th>스캔수량</th><th>상태</th>
+      <th>+1</th><th>-1</th><th>완료</th><th>처리</th>
+    </tr></thead><tbody>`;
+    orderItems.forEach((i, idx) => {
+      const done = i.scannedCount >= i.quantity;
+      const rowId = CSS.escape(i.sku || 'nosku'+idx);
+      const imageUrl = i.imageUrl || '';
+      const unitPrice = i.price ?? 0.0;
 
-        const totalItems = itemsArray.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        const totalScanned = itemsArray.reduce((sum, item) => sum + (item.scannedCount || 0), 0);
+      html += `<tr class="${done ? 'table-success' : 'table-warning'}" id="${rowId}">
+        <td>${imageUrl ? `<img src="${imageUrl}" alt="${i.name}" style="width:50px;height:auto;">` : ''}</td>
+        <td>${i.name}</td>
+        <td>${i.MHD ?? ''}</td>
+        <td>${i.sku ?? ''}</td>
+        <td>${unitPrice.toFixed(2)}</td>
+        <td>${i.quantity}</td>
+        <td>${i.scannedCount}</td>
+        <td>${done ? '완료' : '진행중'}</td>
+        <td><button class="btn btn-sm btn-outline-primary inc" data-idx="${idx}">+1</button></td>
+        <td><button class="btn btn-sm btn-outline-danger dec" data-idx="${idx}">-1</button></td>
+        <td><button class="btn btn-sm btn-success scanAll" data-idx="${idx}">완료</button></td>
+        <td><button class="btn btn-sm btn-secondary process" data-idx="${idx}">처리</button></td>
+      </tr>`;
+      if (i.processHistory && i.processHistory.length > 0) {
+        html += `<tr><td colspan="12">
+          <strong>처리 내역:</strong>
+          ${i.processHistory.map(p => `${p.type}(${p.productName || ''} ${p.quantity})`).join(' | ')}
+        </td></tr>`;
+      }
+    });
+    html += '</tbody></table>';
+    $('#orderItems').html(html);
+  }
 
-        const progress = totalItems === 0 ? 0 : Math.round((totalScanned / totalItems) * 100);
+  // ---------------- 버튼 동작 ----------------
+  $('#orderItems').on('click', '.inc', function() {
+    const i = orderItems[$(this).data('idx')];
+    if (i.scannedCount < i.quantity) i.scannedCount++;
+    playSound(true); renderOrderItems(); updateProgressBar();
+  });
+  $('#orderItems').on('click', '.dec', function() {
+    const i = orderItems[$(this).data('idx')];
+    if (i.scannedCount > 0) i.scannedCount--;
+    playSound(false); renderOrderItems(); updateProgressBar();
+  });
+  $('#orderItems').on('click', '.scanAll', function() {
+    const i = orderItems[$(this).data('idx')];
+    i.scannedCount = i.quantity;
+    playSound(true); renderOrderItems(); updateProgressBar();
+  });
 
-        const $bar = $('#progressBar');
-        $bar.css('width', `${progress}%`).attr('aria-valuenow', progress).text(`${progress}%`);
+  // ---------------- 상품 처리 모달 ----------------
+  $('#orderItems').on('click', '.process', function() {
+    const i = orderItems[$(this).data('idx')];
 
-        if (progress >= 100) {
-            $bar.removeClass('progress-bar-striped progress-bar-animated').addClass('bg-success').text('✅ 완료');
-        } else {
-            $bar.addClass('progress-bar-striped progress-bar-animated').removeClass('bg-success');
-        }
-        //if progrss is completed then click save button automatically
-        if (progress === 100) {
-            $('#saveButton').click();
-        }
-        
-    }
+    let originalHtml = `<h6>원래 상품 정보</h6>
+      <table class="table table-bordered mb-3">
+        <tr><th>상품명</th><td>${i.name}</td></tr>
+        <tr><th>SKU</th><td>${i.sku}</td></tr>
+        <tr><th>유통기한</th><td>${i.MHD}</td></tr>
+        <tr><th>주문수량</th><td>${i.quantity}</td></tr>
+        <tr><th>스캔수량</th><td>${i.scannedCount}</td></tr>
+      </table>`;
+
+    let tabsHtml = `
+      <ul class="nav nav-tabs" id="processTab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="refund-tab" data-toggle="tab" href="#refund" role="tab">환불</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="replace-tab" data-toggle="tab" href="#replace" role="tab">대체</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="point-tab" data-toggle="tab" href="#point" role="tab">적립</a>
+        </li>
+      </ul>
+      <div class="tab-content mt-2">
+        <div class="tab-pane fade show active" id="refund" role="tabpanel">
+          <input class="form-control mb-1" placeholder="환불 상품명" id="refundName" value="${i.name}">
+          <input class="form-control mb-1" placeholder="유통기한" id="refundMHD" value="${i.MHD}">
+          <input type="number" class="form-control mb-1" placeholder="환불 수량" id="refundQty" min="1" max="${i.quantity}">
+          <button class="btn btn-danger w-100 mb-2" id="refundBtn">환불 완료</button>
+        </div>
+        <div class="tab-pane fade" id="replace" role="tabpanel">
+          <input class="form-control mb-1" placeholder="대체 상품명" id="replaceName">
+          <input class="form-control mb-1" placeholder="유통기한" id="replaceMHD">
+          <input type="number" class="form-control mb-1" placeholder="대체 수량" id="replaceQty" min="1" max="${i.quantity}">
+          <button class="btn btn-warning w-100 mb-2" id="replaceBtn">대체 완료</button>
+        </div>
+        <div class="tab-pane fade" id="point" role="tabpanel">
+          <input type="number" class="form-control mb-1" placeholder="적립 수량" id="pointQty" min="1">
+          <button class="btn btn-info w-100 mb-2" id="pointBtn">적립 완료</button>
+        </div>
+      </div>
+    `;
+
+    $('#processModalBody').html(originalHtml + tabsHtml);
+    $('#processModal').modal('show');
+
+    // ---------------- 환불 ----------------
+    $('#refundBtn').off('click').on('click', function() {
+      const qty = parseInt($('#refundQty').val());
+      if(!qty || qty < 1) return alert('수량 입력 필요');
+      const entry = { type: '환불', productName: $('#refundName').val(), MHD: $('#refundMHD').val(), quantity: qty };
+      i.processHistory = i.processHistory || [];
+      i.processHistory.push(entry);
+      renderOrderItems();
+    });
+
+    // ---------------- 대체 ----------------
+    $('#replaceBtn').off('click').on('click', function() {
+      const qty = parseInt($('#replaceQty').val());
+      if(!qty || qty < 1) return alert('수량 입력 필요');
+      const entry = { type: '대체', productName: $('#replaceName').val(), MHD: $('#replaceMHD').val(), quantity: qty };
+      i.processHistory = i.processHistory || [];
+      i.processHistory.push(entry);
+      renderOrderItems();
+    });
+
+    // ---------------- 적립 ----------------
+    $('#pointBtn').off('click').on('click', function() {
+      const qty = parseInt($('#pointQty').val());
+      if(!qty || qty < 1) return alert('수량 입력 필요');
+      const entry = { type: '적립', quantity: qty };
+      i.processHistory = i.processHistory || [];
+      i.processHistory.push(entry);
+      renderOrderItems();
+    });
+  });
+
+  // ---------------- 진행률 ----------------
+  function updateProgressBar() {
+    const total = orderItems.reduce((a, i) => a + i.quantity, 0);
+    const done = orderItems.reduce((a, i) => a + i.scannedCount, 0);
+    const progress = total ? Math.round((done / total) * 100) : 0;
+    $('#progressBar').css('width', progress + '%').text(progress + '%');
+  }
+
+  function playSound(ok){ ok?soundSuccess.play():soundError.play(); }
+  function speak(txt){ const u = new SpeechSynthesisUtterance(txt); u.lang='ko-KR'; tts.speak(u); }
+
 });
 </script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

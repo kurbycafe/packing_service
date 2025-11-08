@@ -14,8 +14,8 @@ public class AdminHomeService {
 
     private final AdminHomeRepository adminHomeRepository;
     
-    public Map<String, Long> getPackingStats() {
-        Long todayCount = adminHomeRepository.countPackedItemsToday();
+    public Map<String, Long> getPackingStats(String today) {
+        Long todayCount = adminHomeRepository.countPackedOrdersbyDate(today);
         Long weekCount = adminHomeRepository.countPackedItemsThisWeek();
         Long monthCount = adminHomeRepository.countPackedItemsThisMonth();
 

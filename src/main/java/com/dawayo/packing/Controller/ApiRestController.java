@@ -6,11 +6,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
+import java.util.*;
+import java.util.concurrent.*;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,176 +27,192 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class ApiRestController {
+
     private final OrderService orderService;
     private final String consumer_key = "ck_b2f69874352c6c35c49dff10d254a36986a2cc26";
     private final String consumer_secret = "cs_e36d3ff7a86398ceb6885cac27b921c6b6707ce7";
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient client = HttpClient.newHttpClient();
 
     @PostMapping("/getOrderDetail")
     @ResponseBody
-    public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber) throws IOException, InterruptedException {
+    public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber)
+            throws IOException, InterruptedException {
 
         if (orderService.existsByOrderNumber(orderNumber)) {
-            return ResponseEntity
-                    .ok()
+            return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("FEHLER: Order number " + orderNumber + " already exists in the database.");
         }
 
-        String orderUrl = "https://dawayo.de/wp-json/wc/v3/orders/" + orderNumber +
-                "?consumer_key=" + consumer_key +
-                "&consumer_secret=" + consumer_secret;
+        String orderUrl = String.format(
+                "https://dawayo.de/wp-json/wc/v3/orders/%s?consumer_key=%s&consumer_secret=%s",
+                orderNumber, consumer_key, consumer_secret);
 
         System.err.println("📦 주문 API 요청: " + orderUrl);
 
-        HttpClient client = HttpClient.newHttpClient();
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        // 주문 정보 요청
-        HttpResponse<String> orderResponse = sendRequest(client, orderUrl);
+        HttpResponse<String> orderResponse = sendRequest(orderUrl);
         String orderBody = orderResponse.body();
 
-        // JSON 형식이 아닌 경우 에러 로그 출력
-        if (!orderBody.trim().startsWith("{") && !orderBody.trim().startsWith("[")) {
-            System.err.println("❌ JSON no (status " + orderResponse.statusCode() + ")");
-            System.err.println(orderBody.substring(0, Math.min(orderBody.length(), 500)));
+        if (!isJson(orderBody)) {
+            System.err.println("❌ JSON 형식 아님 (" + orderResponse.statusCode() + ")");
             return ResponseEntity.status(500).body("WooCommerce returned invalid response (not JSON)");
         }
 
         Map<String, Object> orderMap = objectMapper.readValue(orderBody, new TypeReference<>() {});
         List<Map<String, Object>> lineItems = (List<Map<String, Object>>) orderMap.get("line_items");
-
-        ArrayNode resultArray = objectMapper.createArrayNode();
-
-        for (Map<String, Object> item : lineItems) {
-
-            String name = (String) item.get("name");
-            int quantity = (Integer) item.get("quantity");
-            String productId = String.valueOf(item.get("product_id"));
-
-            String MHD = "";
-
-            List<Map<String, Object>> metaDataList = (List<Map<String, Object>>) item.get("meta_data");
-            if (metaDataList != null) {
-                for (Map<String, Object> meta : metaDataList) {
-                    if ("_wcxd_expiry_date".equals(meta.get("key"))) {
-                        MHD = (String) meta.get("display_value");
-                        break;
-                    }
-                }
-            }
-
-            try {
-                // 한국어 월 이름 인식
-                SimpleDateFormat koreanFormat = new SimpleDateFormat("M월 d, yyyy", Locale.KOREAN);
-                Date date = koreanFormat.parse(MHD);
-
-                // 독일식 포맷으로 변환
-                SimpleDateFormat germanFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMAN);
-                MHD = germanFormat.format(date);
-
-            } catch (Exception e) {
-                System.err.println("⚠️ date parsing fail : " + e.getMessage());
-            }
-
-            System.err.println("MHD deusch: " + MHD);
-
-            String productUrl = "https://dawayo.de/wp-json/wc/v3/products/" + productId +
-                    "?consumer_key=" + consumer_key +
-                    "&consumer_secret=" + consumer_secret;
-
-
-            HttpResponse<String> productResponse = sendRequest(client, productUrl);
-            String productBody = productResponse.body();
-
-            if (!productBody.trim().startsWith("{") && !productBody.trim().startsWith("[")) {
-
-                System.err.println(productBody.substring(0, Math.min(productBody.length(), 500)));
-                continue;
-            }
-
-            Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
-            ObjectNode itemNode = objectMapper.createObjectNode();
-            itemNode.put("orderNumber", orderNumber);
-
-            // 상품 정보 예외 처리
-            if (productMap.containsKey("code") && "woocommerce_rest_product_invalid_id".equals(productMap.get("code"))) {
-                itemNode.put("name", "unknown");
-                itemNode.put("quantity", "unknown");
-                itemNode.put("sku", "unknown");
-            } else {
-                itemNode.put("name", name);
-                itemNode.put("quantity", quantity);
-                itemNode.put("MHD", MHD);
-
-                String sku = "";
-                String expiredate = "";
-                List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
-
-                
-                if (metaList != null) {
-                    for (Map<String, Object> meta : metaList) {
-                        if ("custom_product_sku".equals(meta.get("key"))) {
-                            sku = (String) meta.get("value");
-                            ;
-                        }
-                        if ("_j79_wcxd_sort_key".equals(meta.get("key"))) {
-                            expiredate = (String) meta.get("value");
-                            
-                        }
-                    }
-                }
-            System.err.println("SKU: " + sku + ", Expire Date: " + expiredate);
-                itemNode.put("sku", sku);
-                itemNode.put("expiredate", expiredate);
-            }
-
-            resultArray.add(itemNode);
+        if (lineItems == null || lineItems.isEmpty()) {
+            return ResponseEntity.status(404).body("No line items found for order " + orderNumber);
         }
 
+        ArrayNode resultArray = objectMapper.createArrayNode();
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (Map<String, Object> item : lineItems) {
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    ObjectNode itemNode = processLineItem(item, orderNumber);
+                    synchronized (resultArray) {
+                        resultArray.add(itemNode);
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ Line item 처리 중 오류: " + e.getMessage());
+                }
+            }, executor));
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        executor.shutdown();
+
         String resultJson = objectMapper.writeValueAsString(resultArray);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(resultJson);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(resultJson);
     }
 
-    // 공통 요청 메서드 분리 (헤더 포함)
-    private HttpResponse<String> sendRequest(HttpClient client, String url) throws IOException, InterruptedException {
+    /** 각 상품별 상세 데이터 처리 */
+    private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
+            throws IOException, InterruptedException {
+
+        ObjectNode itemNode = objectMapper.createObjectNode();
+        String name = (String) item.get("name");
+        int quantity = (int) item.getOrDefault("quantity", 0);
+        String productId = String.valueOf(item.get("product_id"));
+ // -------------------------
+    // WooCommerce에서 상품 개별 가격 (incl)
+    // -------------------------
+    double price = 0.0;
+
+    // ✅ 유통기한 (meta_data)
+    String MHD = "";
+    List<Map<String, Object>> metaDataList = (List<Map<String, Object>>) item.get("meta_data");
+    if (metaDataList != null) {
+        for (Map<String, Object> meta : metaDataList) {
+            String key = (String) meta.get("key");
+
+            // 유통기한
+            if ("_wcxd_expiry_date".equals(key)) {
+                MHD = (String) meta.get("display_value");
+            }
+
+            // 개별 가격 incl
+            if ("_wcpdf_regular_price".equals(key)) {
+                Map<String, Object> priceMap = (Map<String, Object>) meta.get("value");
+                if (priceMap != null && priceMap.get("incl") != null) {
+                    try {
+                        price = Double.parseDouble(String.valueOf(priceMap.get("incl")));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+    }
+
+        // ✅ 날짜 변환 (한국어 → 독일식)
+        MHD = convertDateToGerman(MHD);
+
+        // ✅ WooCommerce 상품 API 호출
+        String productUrl = String.format(
+                "https://dawayo.de/wp-json/wc/v3/products/%s?consumer_key=%s&consumer_secret=%s",
+                productId, consumer_key, consumer_secret);
+
+        HttpResponse<String> productResponse = sendRequest(productUrl);
+        String productBody = productResponse.body();
+        if (!isJson(productBody)) {
+            System.err.println("❌ product JSON 형식 아님: " + productId);
+            return itemNode;
+        }
+
+        Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
+
+        String sku = (String) productMap.getOrDefault("sku", "");
+        String imageUrl = "";
+        List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
+        if (images != null && !images.isEmpty()) {
+            imageUrl = String.valueOf(images.get(0).get("src"));
+        }
+
+        // 추가 메타데이터
+        String expiredate = "";
+        List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
+        if (metaList != null) {
+            for (Map<String, Object> meta : metaList) {
+                if ("_j79_wcxd_sort_key".equals(meta.get("key"))) {
+                    expiredate = (String) meta.get("value");
+                }
+            }
+        }
+
+        itemNode.put("orderNumber", orderNumber);
+        itemNode.put("name", name);
+        itemNode.put("quantity", quantity);
+        itemNode.put("MHD", MHD);
+        itemNode.put("sku", sku);
+        itemNode.put("expiredate", expiredate);
+        itemNode.put("price", price);         //  상품 가격 추가
+        itemNode.put("imageUrl", imageUrl);   // 상품 이미지 URL 추가
+System.err.println(itemNode.toString());
+        return itemNode;
+    }
+
+    /** 날짜 변환 (한국어 → 독일어 형식) */
+    private String convertDateToGerman(String MHD) {
+        if (MHD == null || MHD.isBlank()) return "";
+        try {
+            SimpleDateFormat koreanFormat = new SimpleDateFormat("M월 d, yyyy", Locale.KOREAN);
+            Date date = koreanFormat.parse(MHD);
+            SimpleDateFormat germanFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMAN);
+            return germanFormat.format(date);
+        } catch (Exception e) {
+            System.err.println("⚠️ Date parsing fail: " + MHD);
+            return MHD;
+        }
+    }
+
+    private boolean isJson(String body) {
+        return body != null && (body.trim().startsWith("{") || body.trim().startsWith("["));
+    }
+
+    private HttpResponse<String> sendRequest(String url) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                // WooCommerce API가 JSON으로 응답하도록 명시
                 .header("Accept", "application/json")
-                // 봇 차단 우회 (브라우저 유사 헤더)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DawayoPackingClient/1.0")
-                .GET()
-                .build();
-
+                .header("User-Agent", "Mozilla/5.0 DawayoPackingClient/2.0")
+                .GET().build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // 상태코드 로그로 확인
-        System.err.println("🌐 요청 결과: " + response.statusCode() + " (" + url + ")");
+        System.err.println("🌐 API 요청: " + response.statusCode() + " (" + url + ")");
         return response;
     }
 
     @PostMapping("/saveScannedItems")
     public ResponseEntity<String> saveScannedItems(@RequestBody PackingRequestVO request) {
-
         List<PackingVO> scannedItems = request.getScannedItems();
-        System.err.println(scannedItems);
         List<ScanErrorVO> scannedErrorItems = request.getScannedErrorItems();
 
-        System.out.println("✅ 스캔된 정상 아이템 수: " + (scannedItems != null ? scannedItems.size() : 0));
-        System.out.println("⚠️ 스캔 오류 아이템 수: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
+        System.out.println("✅ 정상 아이템 수: " + (scannedItems != null ? scannedItems.size() : 0));
+        System.out.println("⚠️ 오류 아이템 수: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
 
-        if (scannedItems != null) {
-            for (PackingVO item : scannedItems) {
-                System.err.println("📦 Received item: " + item.toString());
-            }
-            orderService.saveAll(scannedItems);
-        }
-
-        if (scannedErrorItems != null) {
-            orderService.saveAllError(scannedErrorItems);
-        }
+        if (scannedItems != null) orderService.saveAll(scannedItems);
+        if (scannedErrorItems != null) orderService.saveAllError(scannedErrorItems);
 
         return ResponseEntity.ok("Scanned items received successfully");
     }
