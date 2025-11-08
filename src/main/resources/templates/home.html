@@ -27,9 +27,14 @@
   <input id="productBarcode" class="form-control mb-2" placeholder="상품 바코드 스캔" style="font-size:20px;" disabled>
 
   <div id="loadingIndicator" style="display:none; color:#007bff; font-weight:bold;">⏳ 주문 정보를 불러오는 중...</div>
+
+  <!-- 전체 상품 완료 버튼 -->
+  <button id="completeAllButton" class="btn btn-primary mb-3">✅ 전체 상품 완료</button>
+
   <div id="orderItems" class="mt-4"></div>
   <button id="saveButton" class="btn btn-success mt-3">💾 저장</button>
 </div>
+
 
 <!-- 처리 모달 -->
 <div class="modal fade" id="processModal" tabindex="-1" role="dialog">
@@ -51,7 +56,14 @@ $(function () {
   const soundSuccess = new Audio('/sounds/success.mp3');
   const soundError = new Audio('/sounds/error.mp3');
   const tts = window.speechSynthesis;
-
+$('#completeAllButton').click(function() {
+  if (!orderItems.length) return alert('주문을 먼저 스캔하세요');
+  orderItems.forEach(i => i.scannedCount = i.quantity);
+  renderOrderItems();
+  updateProgressBar();
+  playSound(true);
+  speak('모든 상품 완료');
+});
   // ---------------- 주문 스캔 ----------------
   $('#orderBarcode').keydown(function(e) {
     if (e.key === 'Enter') {
