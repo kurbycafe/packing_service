@@ -98,6 +98,7 @@ $('#completeAllButton').click(function() {
       if (!code) return;
 
       const found = orderItems.find(i => i.sku === code || i.name.includes(code));
+      console.log (orderItems)
       if (!found) {
         playSound(false);
         return alert('주문 내역에 없는 상품');

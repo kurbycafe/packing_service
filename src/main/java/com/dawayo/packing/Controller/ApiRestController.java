@@ -91,14 +91,15 @@ public class ApiRestController {
     }
 
     /** 각 상품별 상세 데이터 처리 */
-    private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
-            throws IOException, InterruptedException {
+private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
+        throws IOException, InterruptedException {
 
-        ObjectNode itemNode = objectMapper.createObjectNode();
-        String name = (String) item.get("name");
-        int quantity = (int) item.getOrDefault("quantity", 0);
-        String productId = String.valueOf(item.get("product_id"));
- // -------------------------
+    ObjectNode itemNode = objectMapper.createObjectNode();
+    String name = (String) item.get("name");
+    int quantity = (int) item.getOrDefault("quantity", 0);
+    String productId = String.valueOf(item.get("product_id"));
+
+    // -------------------------
     // WooCommerce에서 상품 개별 가격 (incl)
     // -------------------------
     double price = 0.0;
@@ -106,6 +107,7 @@ public class ApiRestController {
     // ✅ 유통기한 (meta_data)
     String MHD = "";
     List<Map<String, Object>> metaDataList = (List<Map<String, Object>>) item.get("meta_data");
+
     if (metaDataList != null) {
         for (Map<String, Object> meta : metaDataList) {
             String key = (String) meta.get("key");
@@ -127,52 +129,68 @@ public class ApiRestController {
         }
     }
 
-        // ✅ 날짜 변환 (한국어 → 독일식)
-        MHD = convertDateToGerman(MHD);
+    // ✅ 날짜 변환 (한국어 → 독일식)
+    MHD = convertDateToGerman(MHD);
 
-        // ✅ WooCommerce 상품 API 호출
-        String productUrl = String.format(
-                "https://dawayo.de/wp-json/wc/v3/products/%s?consumer_key=%s&consumer_secret=%s",
-                productId, consumer_key, consumer_secret);
+    // ✅ WooCommerce 상품 API 호출
+    String productUrl = String.format(
+            "https://dawayo.de/wp-json/wc/v3/products/%s?consumer_key=%s&consumer_secret=%s",
+            productId, consumer_key, consumer_secret);
 
-        HttpResponse<String> productResponse = sendRequest(productUrl);
-        String productBody = productResponse.body();
-        if (!isJson(productBody)) {
-            System.err.println("❌ product JSON 형식 아님: " + productId);
-            return itemNode;
-        }
-
-        Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
-
-        String sku = (String) productMap.getOrDefault("sku", "");
-        String imageUrl = "";
-        List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
-        if (images != null && !images.isEmpty()) {
-            imageUrl = String.valueOf(images.get(0).get("src"));
-        }
-
-        // 추가 메타데이터
-        String expiredate = "";
-        List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
-        if (metaList != null) {
-            for (Map<String, Object> meta : metaList) {
-                if ("_j79_wcxd_sort_key".equals(meta.get("key"))) {
-                    expiredate = (String) meta.get("value");
-                }
-            }
-        }
-
-        itemNode.put("orderNumber", orderNumber);
-        itemNode.put("name", name);
-        itemNode.put("quantity", quantity);
-        itemNode.put("MHD", MHD);
-        itemNode.put("sku", sku);
-        itemNode.put("expiredate", expiredate);
-        itemNode.put("price", price);         //  상품 가격 추가
-        itemNode.put("imageUrl", imageUrl);   // 상품 이미지 URL 추가
-System.err.println(itemNode.toString());
+    HttpResponse<String> productResponse = sendRequest(productUrl);
+    String productBody = productResponse.body();
+    if (!isJson(productBody)) {
+        System.err.println("❌ product JSON 형식 아님: " + productId);
         return itemNode;
     }
+
+    Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
+    System.err.println("🔍 product DATA: " + productMap.toString());
+    System.err.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+
+    // ✅ SKU 가져오기 (meta_data > key = "custom_product_sku")
+    String sku = "";
+    List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
+    if (metaList != null) {
+        for (Map<String, Object> meta : metaList) {
+            if ("custom_product_sku".equals(meta.get("key"))) {
+                sku = String.valueOf(meta.get("value"));
+                break;
+            }
+        }
+    }
+
+    // ✅ 이미지 URL
+    String imageUrl = "";
+    List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
+    if (images != null && !images.isEmpty()) {
+        imageUrl = String.valueOf(images.get(0).get("src"));
+    }
+
+    // ✅ 추가 메타데이터 (예: expiredate)
+    String expiredate = "";
+    if (metaList != null) {
+        for (Map<String, Object> meta : metaList) {
+            if ("_j79_wcxd_sort_key".equals(meta.get("key"))) {
+                expiredate = String.valueOf(meta.get("value"));
+            }
+        }
+    }
+
+    // ✅ 결과 JSON 구성
+    itemNode.put("orderNumber", orderNumber);
+    itemNode.put("name", name);
+    itemNode.put("quantity", quantity);
+    itemNode.put("MHD", MHD);
+    itemNode.put("sku", sku);           // ← 수정된 부분
+    itemNode.put("expiredate", expiredate);
+    itemNode.put("price", price);
+    itemNode.put("imageUrl", imageUrl);
+
+    System.err.println(itemNode.toString());
+    return itemNode;
+}
+
 
     /** 날짜 변환 (한국어 → 독일어 형식) */
     private String convertDateToGerman(String MHD) {
