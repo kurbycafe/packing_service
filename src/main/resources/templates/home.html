@@ -35,7 +35,6 @@
   <button id="saveButton" class="btn btn-success mt-3">💾 저장</button>
 </div>
 
-
 <!-- 처리 모달 -->
 <div class="modal fade" id="processModal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-lg" role="document">
@@ -56,14 +55,17 @@ $(function () {
   const soundSuccess = new Audio('/sounds/success.mp3');
   const soundError = new Audio('/sounds/error.mp3');
   const tts = window.speechSynthesis;
-$('#completeAllButton').click(function() {
-  if (!orderItems.length) return alert('주문을 먼저 스캔하세요');
-  orderItems.forEach(i => i.scannedCount = i.quantity);
-  renderOrderItems();
-  updateProgressBar();
-  playSound(true);
-  speak('모든 상품 완료');
-});
+
+  // ✅ 전체 상품 완료 버튼
+  $('#completeAllButton').click(function() {
+    if (!orderItems.length) return alert('주문을 먼저 스캔하세요');
+    orderItems.forEach(i => i.scannedCount = i.quantity);
+    renderOrderItems();
+    updateProgressBar();
+    playSound(true);
+    speak('모든 상품 완료');
+  });
+
   // ---------------- 주문 스캔 ----------------
   $('#orderBarcode').keydown(function(e) {
     if (e.key === 'Enter') {
@@ -78,7 +80,12 @@ $('#completeAllButton').click(function() {
 
         if (response.length) {
           startTime = Date.now();
-          orderItems = response.map((item, i) => ({ ...item, scannedCount: 0, index: i }));
+          orderItems = response.map((item, i) => ({
+            ...item,
+            sku: String(item.sku || '').trim(), // 문자열 변환
+            scannedCount: 0,
+            index: i
+          }));
           renderOrderItems();
           updateProgressBar();
           $('#orderBarcode').prop('disabled', true);
@@ -93,15 +100,22 @@ $('#completeAllButton').click(function() {
   $('#productBarcode').keydown(function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      let code = $(this).val().trim().replace(/^0+/, '');
+      let code = $(this).val().trim();
       $(this).val('');
       if (!code) return;
 
-      const found = orderItems.find(i => i.sku === code || i.name.includes(code));
-      console.log (orderItems)
+      // 바코드 문자열 통일 (leading zero 제거)
+      code = code.replace(/^0+/, '');
+
+      const found = orderItems.find(i =>
+        i.sku.replace(/^0+/, '') === code ||
+        i.name.toLowerCase().includes(code.toLowerCase())
+      );
+
       if (!found) {
         playSound(false);
-        return alert('주문 내역에 없는 상품');
+        alert('주문 내역에 없는 상품');
+        return;
       }
 
       if (found.scannedCount >= found.quantity) {
@@ -119,6 +133,15 @@ $('#completeAllButton').click(function() {
     }
   });
 
+  // ✅ highlightRow 함수 추가
+  function highlightRow(sku) {
+    const row = document.getElementById(CSS.escape(sku));
+    if (row) {
+      $(row).addClass('highlight');
+      setTimeout(() => $(row).removeClass('highlight'), 1500);
+    }
+  }
+
   // ---------------- 테이블 렌더링 ----------------
   function renderOrderItems() {
     let html = `<table class="table table-bordered"><thead><tr>
@@ -126,9 +149,10 @@ $('#completeAllButton').click(function() {
       <th>개별 가격</th><th>주문수량</th><th>스캔수량</th><th>상태</th>
       <th>+1</th><th>-1</th><th>완료</th><th>처리</th>
     </tr></thead><tbody>`;
+
     orderItems.forEach((i, idx) => {
       const done = i.scannedCount >= i.quantity;
-      const rowId = CSS.escape(i.sku || 'nosku'+idx);
+      const rowId = CSS.escape(i.sku || 'nosku' + idx);
       const imageUrl = i.imageUrl || '';
       const unitPrice = i.price ?? 0.0;
 
@@ -146,112 +170,10 @@ $('#completeAllButton').click(function() {
         <td><button class="btn btn-sm btn-success scanAll" data-idx="${idx}">완료</button></td>
         <td><button class="btn btn-sm btn-secondary process" data-idx="${idx}">처리</button></td>
       </tr>`;
-      if (i.processHistory && i.processHistory.length > 0) {
-        html += `<tr><td colspan="12">
-          <strong>처리 내역:</strong>
-          ${i.processHistory.map(p => `${p.type}(${p.productName || ''} ${p.quantity})`).join(' | ')}
-        </td></tr>`;
-      }
     });
     html += '</tbody></table>';
     $('#orderItems').html(html);
   }
-
-  // ---------------- 버튼 동작 ----------------
-  $('#orderItems').on('click', '.inc', function() {
-    const i = orderItems[$(this).data('idx')];
-    if (i.scannedCount < i.quantity) i.scannedCount++;
-    playSound(true); renderOrderItems(); updateProgressBar();
-  });
-  $('#orderItems').on('click', '.dec', function() {
-    const i = orderItems[$(this).data('idx')];
-    if (i.scannedCount > 0) i.scannedCount--;
-    playSound(false); renderOrderItems(); updateProgressBar();
-  });
-  $('#orderItems').on('click', '.scanAll', function() {
-    const i = orderItems[$(this).data('idx')];
-    i.scannedCount = i.quantity;
-    playSound(true); renderOrderItems(); updateProgressBar();
-  });
-
-  // ---------------- 상품 처리 모달 ----------------
-  $('#orderItems').on('click', '.process', function() {
-    const i = orderItems[$(this).data('idx')];
-
-    let originalHtml = `<h6>원래 상품 정보</h6>
-      <table class="table table-bordered mb-3">
-        <tr><th>상품명</th><td>${i.name}</td></tr>
-        <tr><th>SKU</th><td>${i.sku}</td></tr>
-        <tr><th>유통기한</th><td>${i.MHD}</td></tr>
-        <tr><th>주문수량</th><td>${i.quantity}</td></tr>
-        <tr><th>스캔수량</th><td>${i.scannedCount}</td></tr>
-      </table>`;
-
-    let tabsHtml = `
-      <ul class="nav nav-tabs" id="processTab" role="tablist">
-        <li class="nav-item">
-          <a class="nav-link active" id="refund-tab" data-toggle="tab" href="#refund" role="tab">환불</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="replace-tab" data-toggle="tab" href="#replace" role="tab">대체</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="point-tab" data-toggle="tab" href="#point" role="tab">적립</a>
-        </li>
-      </ul>
-      <div class="tab-content mt-2">
-        <div class="tab-pane fade show active" id="refund" role="tabpanel">
-          <input class="form-control mb-1" placeholder="환불 상품명" id="refundName" value="${i.name}">
-          <input class="form-control mb-1" placeholder="유통기한" id="refundMHD" value="${i.MHD}">
-          <input type="number" class="form-control mb-1" placeholder="환불 수량" id="refundQty" min="1" max="${i.quantity}">
-          <button class="btn btn-danger w-100 mb-2" id="refundBtn">환불 완료</button>
-        </div>
-        <div class="tab-pane fade" id="replace" role="tabpanel">
-          <input class="form-control mb-1" placeholder="대체 상품명" id="replaceName">
-          <input class="form-control mb-1" placeholder="유통기한" id="replaceMHD">
-          <input type="number" class="form-control mb-1" placeholder="대체 수량" id="replaceQty" min="1" max="${i.quantity}">
-          <button class="btn btn-warning w-100 mb-2" id="replaceBtn">대체 완료</button>
-        </div>
-        <div class="tab-pane fade" id="point" role="tabpanel">
-          <input type="number" class="form-control mb-1" placeholder="적립 수량" id="pointQty" min="1">
-          <button class="btn btn-info w-100 mb-2" id="pointBtn">적립 완료</button>
-        </div>
-      </div>
-    `;
-
-    $('#processModalBody').html(originalHtml + tabsHtml);
-    $('#processModal').modal('show');
-
-    // ---------------- 환불 ----------------
-    $('#refundBtn').off('click').on('click', function() {
-      const qty = parseInt($('#refundQty').val());
-      if(!qty || qty < 1) return alert('수량 입력 필요');
-      const entry = { type: '환불', productName: $('#refundName').val(), MHD: $('#refundMHD').val(), quantity: qty };
-      i.processHistory = i.processHistory || [];
-      i.processHistory.push(entry);
-      renderOrderItems();
-    });
-
-    // ---------------- 대체 ----------------
-    $('#replaceBtn').off('click').on('click', function() {
-      const qty = parseInt($('#replaceQty').val());
-      if(!qty || qty < 1) return alert('수량 입력 필요');
-      const entry = { type: '대체', productName: $('#replaceName').val(), MHD: $('#replaceMHD').val(), quantity: qty };
-      i.processHistory = i.processHistory || [];
-      i.processHistory.push(entry);
-      renderOrderItems();
-    });
-
-    // ---------------- 적립 ----------------
-    $('#pointBtn').off('click').on('click', function() {
-      const qty = parseInt($('#pointQty').val());
-      if(!qty || qty < 1) return alert('수량 입력 필요');
-      const entry = { type: '적립', quantity: qty };
-      i.processHistory = i.processHistory || [];
-      i.processHistory.push(entry);
-      renderOrderItems();
-    });
-  });
 
   // ---------------- 진행률 ----------------
   function updateProgressBar() {
@@ -261,7 +183,8 @@ $('#completeAllButton').click(function() {
     $('#progressBar').css('width', progress + '%').text(progress + '%');
   }
 
-  function playSound(ok){ ok?soundSuccess.play():soundError.play(); }
+  // ---------------- 보조 함수 ----------------
+  function playSound(ok){ ok ? soundSuccess.play() : soundError.play(); }
   function speak(txt){ const u = new SpeechSynthesisUtterance(txt); u.lang='ko-KR'; tts.speak(u); }
 
 });
