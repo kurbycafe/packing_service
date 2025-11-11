@@ -39,6 +39,7 @@ public class ApiRestController {
     public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber)
             throws IOException, InterruptedException {
 
+        System.err.println("🔍 주문 번호 요청: " + orderNumber);
         if (orderService.existsByOrderNumber(orderNumber)) {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)

@@ -51,141 +51,224 @@
 <script>
 $(function () {
   let orderItems = [];
+  let scannedErrorItems = [];
   let startTime = null;
   const soundSuccess = new Audio('/sounds/success.mp3');
   const soundError = new Audio('/sounds/error.mp3');
   const tts = window.speechSynthesis;
 
-  // ✅ 전체 상품 완료 버튼
-  $('#completeAllButton').click(function() {
-    if (!orderItems.length) return alert('주문을 먼저 스캔하세요');
-    orderItems.forEach(i => i.scannedCount = i.quantity);
-    renderOrderItems();
-    updateProgressBar();
+  // ---------------- 주문번호 스캔 ----------------
+  $('#orderBarcode').keydown(function(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    const orderNumber = $(this).val().trim();
+    if(!orderNumber) return;
+
+    $('#loadingIndicator').show();
+    $.post('/api/getOrderDetail', { orderNumber }, function(response){
+      $('#loadingIndicator').hide();
+      try { response = typeof response === 'string' ? JSON.parse(response) : response; } catch { alert('응답 오류'); return; }
+
+      if(response.length){
+        startTime = Date.now();
+        orderItems = response.map((item,i)=>({
+          ...item,
+          sku: String(item.sku||'').trim(),
+          scannedCount: 0,
+          index: i
+        }));
+        scannedErrorItems = [];
+        renderOrderItems();
+        updateProgressBar();
+        $('#orderBarcode').prop('disabled',true);
+        $('#productBarcode').prop('disabled',false).focus();
+        localStorage.setItem('scanProgress', JSON.stringify(orderItems));
+      } else alert('주문 없음');
+    });
+  });
+
+  // ---------------- 상품 바코드 스캔 ----------------
+  $('#productBarcode').keydown(function(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    let code = $(this).val().trim();
+    $(this).val('');
+    if(!code) return;
+
+    code = code.replace(/^0+/, '');
+    const found = orderItems.find(i=>i.sku.replace(/^0+/,'')===code || i.name.toLowerCase().includes(code.toLowerCase()));
+    if(!found){
+      playSound(false);
+      alert('주문 내역에 없는 상품');
+      return;
+    }
+
+    if(found.scannedCount >= found.quantity){
+      playSound(false);
+      return alert(`"${found.name}" 완료됨`);
+    }
+
+    found.scannedCount++;
     playSound(true);
-    speak('모든 상품 완료');
+    speak(`${found.name} 완료`);
+    renderOrderItems();
+    highlightRow(found.sku);
+    updateProgressBar();
+    localStorage.setItem('scanProgress', JSON.stringify(orderItems));
   });
-
-  // ---------------- 주문 스캔 ----------------
-  $('#orderBarcode').keydown(function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const orderNumber = $(this).val().trim();
-      if (!orderNumber) return;
-      $('#loadingIndicator').show();
-
-      $.post('/api/getOrderDetail', { orderNumber }, function(response) {
-        $('#loadingIndicator').hide();
-        try { response = typeof response === 'string' ? JSON.parse(response) : response; } catch { alert('응답 오류'); return; }
-
-        if (response.length) {
-          startTime = Date.now();
-          orderItems = response.map((item, i) => ({
-            ...item,
-            sku: String(item.sku || '').trim(), // 문자열 변환
-            scannedCount: 0,
-            index: i
-          }));
-          renderOrderItems();
-          updateProgressBar();
-          $('#orderBarcode').prop('disabled', true);
-          $('#productBarcode').prop('disabled', false).focus();
-          localStorage.setItem('scanProgress', JSON.stringify(orderItems));
-        } else alert('주문 없음');
-      });
-    }
-  });
-
-  // ---------------- 상품 스캔 ----------------
-  $('#productBarcode').keydown(function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      let code = $(this).val().trim();
-      $(this).val('');
-      if (!code) return;
-
-      // 바코드 문자열 통일 (leading zero 제거)
-      code = code.replace(/^0+/, '');
-
-      const found = orderItems.find(i =>
-        i.sku.replace(/^0+/, '') === code ||
-        i.name.toLowerCase().includes(code.toLowerCase())
-      );
-
-      if (!found) {
-        playSound(false);
-        alert('주문 내역에 없는 상품');
-        return;
-      }
-
-      if (found.scannedCount >= found.quantity) {
-        playSound(false);
-        return alert(`"${found.name}" 완료됨`);
-      }
-
-      found.scannedCount++;
-      playSound(true);
-      speak(`${found.name} 완료`);
-      renderOrderItems();
-      highlightRow(found.sku);
-      updateProgressBar();
-      localStorage.setItem('scanProgress', JSON.stringify(orderItems));
-    }
-  });
-
-  // ✅ highlightRow 함수 추가
-  function highlightRow(sku) {
-    const row = document.getElementById(CSS.escape(sku));
-    if (row) {
-      $(row).addClass('highlight');
-      setTimeout(() => $(row).removeClass('highlight'), 1500);
-    }
-  }
 
   // ---------------- 테이블 렌더링 ----------------
-  function renderOrderItems() {
+  function renderOrderItems(){
+    if(!orderItems.length) return $('#orderItems').html('');
     let html = `<table class="table table-bordered"><thead><tr>
       <th>상품 이미지</th><th>상품명</th><th>유통기한</th><th>SKU</th>
       <th>개별 가격</th><th>주문수량</th><th>스캔수량</th><th>상태</th>
       <th>+1</th><th>-1</th><th>완료</th><th>처리</th>
     </tr></thead><tbody>`;
 
-    orderItems.forEach((i, idx) => {
-      const done = i.scannedCount >= i.quantity;
-      const rowId = CSS.escape(i.sku || 'nosku' + idx);
-      const imageUrl = i.imageUrl || '';
-      const unitPrice = i.price ?? 0.0;
-
-      html += `<tr class="${done ? 'table-success' : 'table-warning'}" id="${rowId}">
-        <td>${imageUrl ? `<img src="${imageUrl}" alt="${i.name}" style="width:50px;height:auto;">` : ''}</td>
+    orderItems.forEach((i,idx)=>{
+      const done = i.scannedCount>=i.quantity;
+      const rowId = CSS.escape(i.sku||'nosku'+idx);
+      const imageUrl = i.imageUrl||'';
+      const unitPrice = i.price??0.0;
+      html+=`<tr class="${done?'table-success':'table-warning'}" id="${rowId}">
+        <td>${imageUrl?`<img src="${imageUrl}" style="width:50px;height:auto;">`:''}</td>
         <td>${i.name}</td>
-        <td>${i.MHD ?? ''}</td>
-        <td>${i.sku ?? ''}</td>
+        <td>${i.MHD??''}</td>
+        <td>${i.sku??''}</td>
         <td>${unitPrice.toFixed(2)}</td>
         <td>${i.quantity}</td>
         <td>${i.scannedCount}</td>
-        <td>${done ? '완료' : '진행중'}</td>
+        <td>${done?'완료':'진행중'}</td>
         <td><button class="btn btn-sm btn-outline-primary inc" data-idx="${idx}">+1</button></td>
         <td><button class="btn btn-sm btn-outline-danger dec" data-idx="${idx}">-1</button></td>
         <td><button class="btn btn-sm btn-success scanAll" data-idx="${idx}">완료</button></td>
         <td><button class="btn btn-sm btn-secondary process" data-idx="${idx}">처리</button></td>
       </tr>`;
     });
-    html += '</tbody></table>';
+    html+='</tbody></table>';
     $('#orderItems').html(html);
   }
 
   // ---------------- 진행률 ----------------
-  function updateProgressBar() {
-    const total = orderItems.reduce((a, i) => a + i.quantity, 0);
-    const done = orderItems.reduce((a, i) => a + i.scannedCount, 0);
-    const progress = total ? Math.round((done / total) * 100) : 0;
-    $('#progressBar').css('width', progress + '%').text(progress + '%');
+  function updateProgressBar(){
+    const total = orderItems.reduce((a,i)=>a+i.quantity,0);
+    const done = orderItems.reduce((a,i)=>a+i.scannedCount,0);
+    const progress = total?Math.round(done/total*100):0;
+    $('#progressBar').css('width',progress+'%').text(progress+'%');
+    if(progress>=100){
+      $('#progressBar').removeClass('progress-bar-striped progress-bar-animated').addClass('bg-success').text('✅ 완료');
+      saveScan(true);
+    } else {
+      $('#progressBar').addClass('progress-bar-striped progress-bar-animated').removeClass('bg-success');
+    }
   }
 
-  // ---------------- 보조 함수 ----------------
-  function playSound(ok){ ok ? soundSuccess.play() : soundError.play(); }
-  function speak(txt){ const u = new SpeechSynthesisUtterance(txt); u.lang='ko-KR'; tts.speak(u); }
+  // ---------------- 전체 상품 완료 ----------------
+  $('#completeAllButton').click(function(){
+    if(!orderItems.length) return alert('주문을 먼저 스캔하세요');
+    orderItems.forEach(i=>i.scannedCount=i.quantity);
+    renderOrderItems();
+    updateProgressBar();
+    playSound(true);
+    speak('모든 상품 완료');
+    localStorage.setItem('scanProgress', JSON.stringify(orderItems));
+  });
+
+  // ---------------- +1/-1/전체/처리 버튼 ----------------
+  $('#orderItems').on('click','.inc',function(){
+    const idx = $(this).data('idx');
+    if(orderItems[idx].scannedCount<orderItems[idx].quantity) orderItems[idx].scannedCount++;
+    renderOrderItems(); updateProgressBar();
+  });
+  $('#orderItems').on('click','.dec',function(){
+    const idx = $(this).data('idx');
+    if(orderItems[idx].scannedCount>0) orderItems[idx].scannedCount--;
+    renderOrderItems(); updateProgressBar();
+  });
+  $('#orderItems').on('click','.scanAll',function(){
+    const idx = $(this).data('idx');
+    orderItems[idx].scannedCount = orderItems[idx].quantity;
+    renderOrderItems(); updateProgressBar();
+  });
+  $('#orderItems').on('click','.process',function(){
+    const idx = $(this).data('idx');
+    $('#processModalBody').html(`<p>상품 처리: ${orderItems[idx].name}</p>`);
+    $('#processModal').modal('show');
+  });
+
+  $('#saveButton').click(function () {
+    // 주문번호
+    const orderNumber = orderItems.length > 0 ? orderItems[0].orderNumber : null;
+
+    // 스캔 완료 여부 확인
+    const isScanningComplete = orderItems.every(item => item.scannedCount === item.quantity);
+
+    // 완료되지 않았으면 사용자에게 확인
+    if (!isScanningComplete) {
+        if (!confirm('스캔이 완료되지 않았습니다. 그래도 저장하시겠습니까?')) {
+            return;
+        }
+    }
+
+    // 정상 스캔 아이템 변환
+    const scannedItems = orderItems.map(item => ({
+        orderNumber,
+        mhd: item.MHD,
+        productName: item.name,
+        productQ: item.quantity,
+        productSku: item.sku,
+        scannedCount: item.scannedCount
+    }));
+    console.log(scannedItems);
+
+    // 오류 아이템 변환
+    const errorItemsPayload = scannedErrorItems.map(item => ({
+        orderNumber,
+        productName: item.name,
+        productSku: item.sku
+    }));
+
+    // 요청 페이로드
+    const payload = {
+        scannedItems,
+        scannedErrorItems: errorItemsPayload
+    };
+
+    // AJAX 호출
+    $.ajax({
+        url: '/api/saveScannedItems',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function () {
+            alert('저장되었습니다.');
+
+            // 초기화
+            $('#orderBarcode').prop('disabled', false).val('').focus();
+            $('#productBarcode').prop('disabled', true).val('');
+            $('#orderItems').html('');
+            orderItems = [];
+            scannedErrorItems = [];
+            updateProgressBar(); // ✅ 진행률 초기화
+        },
+        error: function (xhr) {
+            alert('저장 오류: ' + xhr.responseText);
+        }
+    });
+});
+
+
+
+  // ---------------- 하이라이트 ----------------
+  function highlightRow(sku){
+    const row=document.getElementById(CSS.escape(sku));
+    if(row){ $(row).addClass('highlight'); setTimeout(()=>$(row).removeClass('highlight'),1500); }
+  }
+
+  // ---------------- 사운드/TTS ----------------
+  function playSound(ok){ ok?soundSuccess.play():soundError.play(); }
+  function speak(txt){ const u=new SpeechSynthesisUtterance(txt); u.lang='ko-KR'; tts.speak(u); }
 
 });
 </script>
