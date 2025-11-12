@@ -146,8 +146,7 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     }
 
     Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
-    System.err.println("🔍 product DATA: " + productMap.toString());
-    System.err.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+
 
     // ✅ SKU 가져오기 (meta_data > key = "custom_product_sku")
     String sku = "";

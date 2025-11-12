@@ -2,46 +2,122 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Login</title>
+
+    <!-- Bootstrap & jQuery -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .login-title {
+            font-weight: 600;
+            font-size: 26px;
+            text-align: center;
+            color: #182848;
+            margin-bottom: 25px;
+        }
+
+        .form-control {
+            border-radius: 10px;
+            padding: 12px 15px;
+            border: 1px solid #ced4da;
+        }
+
+        .btn-primary {
+            background-color: #4b6cb7;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #3b5998;
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #777;
+        }
+
+        @media (max-width: 576px) {
+            .login-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-<!-- Header Include -->
-<div th:replace="fragments/header :: header "></div>
 
-<!-- Main Content -->
-<div class="container mt-5">
-<div class="row justify-content-center">
-    <div class="col-md-4">
-        <h2 class="mb-4 text-center">Login</h2>
-        <form th:action="@{/loginProcess}" method="post" th:object="${userVO}">
-            <div class="form-group mb-3">
-                <label for="username">Benutzername</label>
-                <input type="text" class="form-control" th:field="*{userid}" required autofocus>
-            </div>
-            <div class="form-group mb-3">
-                <label for="password">Passwort</label>
-                <input type="password" class="form-control" th:field="*{password}" required>
-            </div>
-            <div class="d-grid">
-                <button type="submit" class="btn btn-primary">Anmelden</button>
-            </div>
-            <div th:if="${param.error}" class="alert alert-danger mt-3" role="alert">
-                Ungültiger Benutzername oder Passwort.
-            </div>
-            <div th:if="${param.logout}" class="alert alert-success mt-3" role="alert">
-                Sie wurden erfolgreich abgemeldet.
-            </div>
-        </form>
+<div class="login-card">
+    <h2 class="login-title">🔐 Login</h2>
+
+    <form th:action="@{/loginProcess}" method="post" th:object="${userVO}">
+        <div class="form-group mb-3">
+            <label for="username">Benutzername</label>
+            <input type="text" class="form-control" th:field="*{userid}" placeholder="Geben Sie Ihren Benutzernamen ein" required autofocus>
+        </div>
+
+        <div class="form-group mb-4">
+            <label for="password">Passwort</label>
+            <input type="password" class="form-control" th:field="*{password}" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
+
+        <div th:if="${param.error}" class="alert alert-danger mt-3" role="alert">
+            ❌ Ungültiger Benutzername oder Passwort.
+        </div>
+        <div th:if="${param.logout}" class="alert alert-success mt-3" role="alert">
+            ✅ Sie wurden erfolgreich abgemeldet.
+        </div>
+    </form>
+
+    <div class="footer-text">
+        © 2025 Your Company. Alle Rechte vorbehalten.
     </div>
 </div>
-    
 
-</div>
-
-
-
-
-<!-- <div th:replace="fragments/footer :: footer "></div> -->
 </body>
 </html>
