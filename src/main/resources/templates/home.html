@@ -354,7 +354,60 @@ let tabsHtml = `
     renderOrderItems();
   });
 });
+// 저장 버튼 클릭 시
+    // -------------------
+    $('#saveButton').click(function () {
+      //orderNumber
+        const orderNumber = $('#orderBarcode').val().trim();
+        //check if tscanning is complete
+        const isScanningComplete = orderItems.every(item => item.scannedCount === item.quantity);
+if (!isScanningComplete) {
+    const proceed = confirm('모든 상품이 스캔되지 않았습니다. 진행하시겠습니까?');
+    if (!proceed) {
+        return false; // 사용자가 "취소"를 누르면 진행 중단
+    }
+}
 
+
+        const scannedItems = orderItems.map(item => ({
+            orderNumber,
+            mhd: item.MHD, 
+            productName: item.name,
+            productQ: item.quantity,
+            productSku: item.sku,
+            scannedCount: item.scannedCount
+        }));
+        console.log(scannedItems);
+
+        const errorItemsPayload = scannedErrorItems.map(item => ({
+            orderNumber,
+            productName: item.name,
+            productSku: item.sku
+        }));
+
+        const payload = { scannedItems, scannedErrorItems: errorItemsPayload };
+
+        $.ajax({
+            url: '/api/saveScannedItems',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function () {
+                alert('저장되었습니다.');
+                $('#orderBarcode').prop('disabled', false).val('').focus();
+                $('#productBarcode').prop('disabled', true).val('');
+                $('#orderItems').html('');
+                orderItems = [];
+                scannedErrorItems = [];
+                updateProgressBar(); // ✅ 초기화
+                $('#resetButton').click();
+
+            },
+            error: function (xhr) {
+                alert('저장 오류: ' + xhr.responseText);
+            }
+        });
+    });
     // 필터
     $('.filter-btn').click(function(){
       $('.filter-btn').removeClass('active');
