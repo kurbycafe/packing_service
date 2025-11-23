@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import lombok.RequiredArgsConstructor;
 
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -39,7 +40,7 @@ public class ApiRestController {
     public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber)
             throws IOException, InterruptedException {
 
-        System.err.println("ğŸ” ì£¼ë¬¸ ë²ˆí˜¸ ìš”ì²­: " + orderNumber);
+        System.err.println("? ÁÖ¹® ¹øÈ£ ¿äÃ»: " + orderNumber);
         if (orderService.existsByOrderNumber(orderNumber)) {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
@@ -50,13 +51,13 @@ public class ApiRestController {
                 "https://dawayo.de/wp-json/wc/v3/orders/%s?consumer_key=%s&consumer_secret=%s",
                 orderNumber, consumer_key, consumer_secret);
 
-        System.err.println("ğŸ“¦ ì£¼ë¬¸ API ìš”ì²­: " + orderUrl);
+        System.err.println("? ÁÖ¹® API ¿äÃ»: " + orderUrl);
 
         HttpResponse<String> orderResponse = sendRequest(orderUrl);
         String orderBody = orderResponse.body();
 
         if (!isJson(orderBody)) {
-            System.err.println("âŒ JSON í˜•ì‹ ì•„ë‹˜ (" + orderResponse.statusCode() + ")");
+            System.err.println("? JSON Çü½Ä ¾Æ´Ô (" + orderResponse.statusCode() + ")");
             return ResponseEntity.status(500).body("WooCommerce returned invalid response (not JSON)");
         }
 
@@ -79,7 +80,7 @@ public class ApiRestController {
                         resultArray.add(itemNode);
                     }
                 } catch (Exception e) {
-                    System.err.println("âš ï¸ Line item ì²˜ë¦¬ ì¤‘ ì˜¤ë¥˜: " + e.getMessage());
+                    System.err.println("?? Line item Ã³¸® Áß ¿À·ù: " + e.getMessage());
                 }
             }, executor));
         }
@@ -91,7 +92,7 @@ public class ApiRestController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(resultJson);
     }
 
-    /** ê° ìƒí’ˆë³„ ìƒì„¸ ë°ì´í„° ì²˜ë¦¬ */
+    /** °¢ »óÇ°º° »ó¼¼ µ¥ÀÌÅÍ Ã³¸® */
 private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         throws IOException, InterruptedException {
 
@@ -101,11 +102,11 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     String productId = String.valueOf(item.get("product_id"));
 
     // -------------------------
-    // WooCommerceì—ì„œ ìƒí’ˆ ê°œë³„ ê°€ê²© (incl)
+    // WooCommerce¿¡¼­ »óÇ° °³º° °¡°İ (incl)
     // -------------------------
     double price = 0.0;
 
-    // âœ… ìœ í†µê¸°í•œ (meta_data)
+    // ? À¯Åë±âÇÑ (meta_data)
     String MHD = "";
     List<Map<String, Object>> metaDataList = (List<Map<String, Object>>) item.get("meta_data");
 
@@ -113,12 +114,12 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         for (Map<String, Object> meta : metaDataList) {
             String key = (String) meta.get("key");
 
-            // ìœ í†µê¸°í•œ
+            // À¯Åë±âÇÑ
             if ("_wcxd_expiry_date".equals(key)) {
                 MHD = (String) meta.get("display_value");
             }
 
-            // ê°œë³„ ê°€ê²© incl
+            // °³º° °¡°İ incl
             if ("_wcpdf_regular_price".equals(key)) {
                 Map<String, Object> priceMap = (Map<String, Object>) meta.get("value");
                 if (priceMap != null && priceMap.get("incl") != null) {
@@ -130,10 +131,10 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // âœ… ë‚ ì§œ ë³€í™˜ (í•œêµ­ì–´ â†’ ë…ì¼ì‹)
+    // ? ³¯Â¥ º¯È¯ (ÇÑ±¹¾î ¡æ µ¶ÀÏ½Ä)
     MHD = convertDateToGerman(MHD);
 
-    // âœ… WooCommerce ìƒí’ˆ API í˜¸ì¶œ
+    // ? WooCommerce »óÇ° API È£Ãâ
     String productUrl = String.format(
             "https://dawayo.de/wp-json/wc/v3/products/%s?consumer_key=%s&consumer_secret=%s",
             productId, consumer_key, consumer_secret);
@@ -141,14 +142,14 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     HttpResponse<String> productResponse = sendRequest(productUrl);
     String productBody = productResponse.body();
     if (!isJson(productBody)) {
-        System.err.println("âŒ product JSON í˜•ì‹ ì•„ë‹˜: " + productId);
+        System.err.println("? product JSON Çü½Ä ¾Æ´Ô: " + productId);
         return itemNode;
     }
 
     Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
 
 
-    // âœ… SKU ê°€ì ¸ì˜¤ê¸° (meta_data > key = "custom_product_sku")
+    // ? SKU °¡Á®¿À±â (meta_data > key = "custom_product_sku")
     String sku = "";
     List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
     if (metaList != null) {
@@ -160,14 +161,14 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // âœ… ì´ë¯¸ì§€ URL
+    // ? ÀÌ¹ÌÁö URL
     String imageUrl = "";
     List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
     if (images != null && !images.isEmpty()) {
         imageUrl = String.valueOf(images.get(0).get("src"));
     }
 
-    // âœ… ì¶”ê°€ ë©”íƒ€ë°ì´í„° (ì˜ˆ: expiredate)
+    // ? Ãß°¡ ¸ŞÅ¸µ¥ÀÌÅÍ (¿¹: expiredate)
     String expiredate = "";
     if (metaList != null) {
         for (Map<String, Object> meta : metaList) {
@@ -177,12 +178,12 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // âœ… ê²°ê³¼ JSON êµ¬ì„±
+    // ? °á°ú JSON ±¸¼º
     itemNode.put("orderNumber", orderNumber);
     itemNode.put("name", name);
     itemNode.put("quantity", quantity);
     itemNode.put("MHD", MHD);
-    itemNode.put("sku", sku);           // â† ìˆ˜ì •ëœ ë¶€ë¶„
+    itemNode.put("sku", sku);           // ¡ç ¼öÁ¤µÈ ºÎºĞ
     itemNode.put("expiredate", expiredate);
     itemNode.put("price", price);
     itemNode.put("imageUrl", imageUrl);
@@ -192,16 +193,16 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
 }
 
 
-    /** ë‚ ì§œ ë³€í™˜ (í•œêµ­ì–´ â†’ ë…ì¼ì–´ í˜•ì‹) */
+    /** ³¯Â¥ º¯È¯ (ÇÑ±¹¾î ¡æ µ¶ÀÏ¾î Çü½Ä) */
     private String convertDateToGerman(String MHD) {
         if (MHD == null || MHD.isBlank()) return "";
         try {
-            SimpleDateFormat koreanFormat = new SimpleDateFormat("Mì›” d, yyyy", Locale.KOREAN);
+            SimpleDateFormat koreanFormat = new SimpleDateFormat("M¿ù d, yyyy", Locale.KOREAN);
             Date date = koreanFormat.parse(MHD);
             SimpleDateFormat germanFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMAN);
             return germanFormat.format(date);
         } catch (Exception e) {
-            System.err.println("âš ï¸ Date parsing fail: " + MHD);
+            System.err.println("?? Date parsing fail: " + MHD);
             return MHD;
         }
     }
@@ -217,7 +218,7 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
                 .header("User-Agent", "Mozilla/5.0 DawayoPackingClient/2.0")
                 .GET().build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.err.println("ğŸŒ API ìš”ì²­: " + response.statusCode() + " (" + url + ")");
+        System.err.println("? API ¿äÃ»: " + response.statusCode() + " (" + url + ")");
         return response;
     }
 
@@ -226,12 +227,61 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         List<PackingVO> scannedItems = request.getScannedItems();
         List<ScanErrorVO> scannedErrorItems = request.getScannedErrorItems();
 
-        System.out.println("âœ… ì •ìƒ ì•„ì´í…œ ìˆ˜: " + (scannedItems != null ? scannedItems.size() : 0));
-        System.out.println("âš ï¸ ì˜¤ë¥˜ ì•„ì´í…œ ìˆ˜: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
+        System.out.println("? Á¤»ó ¾ÆÀÌÅÛ ¼ö: " + (scannedItems != null ? scannedItems.size() : 0));
+        System.out.println("?? ¿À·ù ¾ÆÀÌÅÛ ¼ö: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
 
         if (scannedItems != null) orderService.saveAll(scannedItems);
         if (scannedErrorItems != null) orderService.saveAllError(scannedErrorItems);
 
         return ResponseEntity.ok("Scanned items received successfully");
     }
+
+   @GetMapping("/updateProductList")
+public void getMethodName() throws IOException, InterruptedException {
+    int page = 1; // ÆäÀÌÁö ¹øÈ£ ÃÊ±âÈ­
+    int perPage = 100; // ÇÑ ÆäÀÌÁö¿¡ 100°³ »óÇ° °¡Á®¿À±â
+    List<Map<String, Object>> allProducts = new ArrayList<>(); // ¸ğµç »óÇ°À» ÀúÀåÇÒ ¸®½ºÆ®
+System.err.println("Å×½ºÆ®");
+    // ¹İº¹¹®À» ÅëÇØ ¿©·¯ ÆäÀÌÁöÀÇ µ¥ÀÌÅÍ¸¦ ¸ğµÎ °¡Á®¿À±â
+    // while (true) {
+    //     String productUrl = String.format(
+    //         "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
+    //         consumer_key, consumer_secret, perPage, page
+    //     );
+    //     System.err.println("? Produktliste aktualisieren API ¿äÃ»: " + productUrl); 
+
+    //     // API ¿äÃ» ¹× ÀÀ´ä Ã³¸®
+    //     try {
+    //         HttpResponse<String> productResponse = sendRequest(productUrl); // API ¿äÃ»
+    //         String productBody = productResponse.body(); // ÀÀ´ä º»¹®
+
+
+    //         // ObjectMapper·Î JSON ¹è¿­À» List<Map<String, Object>>·Î º¯È¯
+    //         ObjectMapper objectMapper = new ObjectMapper();
+    //         List<Map<String, Object>> productList = objectMapper.readValue(productBody, new TypeReference<List<Map<String, Object>>>() {});
+
+    //         // ¸¸¾à »óÇ°ÀÌ ¾øÀ¸¸é ¹İº¹ Á¾·á
+    //         if (productList.isEmpty()) {
+    //             break;
+    //         }
+
+    //         // °¡Á®¿Â »óÇ°À» ¸ğµç ¸®½ºÆ®¿¡ Ãß°¡
+    //         allProducts.addAll(productList);
+
+    //         // ÆäÀÌÁö ¹øÈ£ Áõ°¡
+    //         page++;
+    //     } catch (IOException | InterruptedException e) {
+    //         e.printStackTrace();
+    //         break;  // ¿¡·¯°¡ ¹ß»ıÇÏ¸é ¹İº¹ Á¾·á
+    //     }
+    // }
+
+    // // ¸ğµç »óÇ°À» Ãâ·Â
+    // System.err.println("? ÃÑ »óÇ° ¸ñ·Ï: " + allProducts.size() + "°³ »óÇ°");
+    // for (Map<String, Object> product : allProducts) {
+    //     String productName = (String) product.get("name"); // »óÇ°¸í
+    //     String productPrice = (String) product.get("price"); // °¡°İ (API¿¡¼­ °¡°İÀº StringÀ¸·Î Á¦°øµÊ)
+    //     System.out.println("»óÇ°¸í: " + productName + ", °¡°İ: " + productPrice);
+    // }
+}
 }

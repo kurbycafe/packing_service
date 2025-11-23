@@ -91,7 +91,7 @@
 <body>
 
 <div class="login-card">
-    <h2 class="login-title">🔐 Login</h2>
+    <h2 class="login-title">? Login</h2>
 
     <form th:action="@{/loginProcess}" method="post" th:object="${userVO}">
         <div class="form-group mb-3">
@@ -101,21 +101,21 @@
 
         <div class="form-group mb-4">
             <label for="password">Passwort</label>
-            <input type="password" class="form-control" th:field="*{password}" placeholder="••••••••" required>
+            <input type="password" class="form-control" th:field="*{password}" placeholder="????????" required>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
 
         <div th:if="${param.error}" class="alert alert-danger mt-3" role="alert">
-            ❌ Ungültiger Benutzername oder Passwort.
+            ? Ung?ltiger Benutzername oder Passwort.
         </div>
         <div th:if="${param.logout}" class="alert alert-success mt-3" role="alert">
-            ✅ Sie wurden erfolgreich abgemeldet.
+            ? Sie wurden erfolgreich abgemeldet.
         </div>
     </form>
 
     <div class="footer-text">
-        © 2025 Your Company. Alle Rechte vorbehalten.
+        ? 2025 Dawayo. Alle Rechte vorbehalten.
     </div>
 </div>
 
