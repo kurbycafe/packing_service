@@ -19,8 +19,8 @@ public class AdminHomeController {
     @RequestMapping("/home")
     public String adminHome() {
         //get number of packed items by today, this week, this month and return to the view
-        Map<String, Long> packingStats = adminHomeService.getPackingStats();
-System.err.println("📊 Packing Stats: " + packingStats);
+        // Map<String, Long> packingStats = adminHomeService.getPackingStats();
+// System.err.println("📊 Packing Stats: " + packingStats);
 
         // 관리자 홈 페이지로 이동
         return "admin/adminHome"; // adminHome.html로 이동

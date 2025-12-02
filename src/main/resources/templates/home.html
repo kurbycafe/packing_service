@@ -200,8 +200,8 @@ $('#completeAllButton').click(function() {
       </ul>
       <div class="tab-content mt-2">
         <div class="tab-pane fade show active" id="refund" role="tabpanel">
-          <input class="form-control mb-1" placeholder="환불 상품명" id="refundName" value="${i.name}">
-          <input class="form-control mb-1" placeholder="유통기한" id="refundMHD" value="${i.MHD}">
+          <input class="form-control mb-1" placeholder="환불 상품명" id="refundName" value="">
+          <input class="form-control mb-1" placeholder="유통기한" id="refundMHD" value="">
           <input type="number" class="form-control mb-1" placeholder="환불 수량" id="refundQty" min="1" max="${i.quantity}">
           <button class="btn btn-danger w-100 mb-2" id="refundBtn">환불 완료</button>
         </div>
@@ -220,6 +220,9 @@ $('#completeAllButton').click(function() {
 
     $('#processModalBody').html(originalHtml + tabsHtml);
     $('#processModal').modal('show');
+//every time refundName and replaceName typed then search for similar products on server with using ajax and show suggestions below the input
+
+
 
     // ---------------- 환불 ----------------
     $('#refundBtn').off('click').on('click', function() {
