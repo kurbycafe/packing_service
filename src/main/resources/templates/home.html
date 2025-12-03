@@ -139,6 +139,11 @@
       code=code.replace(/^0+/,'');
       const found=orderItems.find(i=>i.sku.replace(/^0+/,'')===code || i.name.toLowerCase().includes(code.toLowerCase()));
       if(!found){
+        // 🔊 에러 비프음
+    const beep = new Audio("/error-126627.mp3");
+    beep.volume = 1.0; // 최대 볼륨
+    beep.play();
+    alert("등록되지 않은 상품입니다.");  
         $('#log').prepend(`<div class="text-danger">❌ [${new Date().toLocaleTimeString()}] 등록되지 않은 상품: ${code}</div>`);
         scannedErrorItems.push({ name:'미등록', sku:code });
         renderErrorItems();
