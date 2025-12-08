@@ -18,84 +18,87 @@
       padding-top: 50px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    .scan-card {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      padding: 30px;
-      width: 100%;
-      max-width: 1200px;
-    }
     .highlight { animation: blink 0.7s alternate infinite; }
     @keyframes blink { from { background-color: #fff3cd; } to { background-color: #ffeeba; } }
     #summaryInfo { font-size: 16px; font-weight: 500; margin-top: 10px; }
     #log { font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; padding: 10px; height: 120px; overflow-y: auto; border-radius: 5px; }
-    #errorItems { margin-top: 20px; }
-    input.form-control {
-      font-size: 18px;
-    }
+    input.form-control { font-size: 18px; }
     .progress { height: 25px; border-radius: 12px; overflow: hidden; }
-    .btn { font-weight: 500; }
-    .nav-tabs .nav-link { font-weight: 500; }
-    table.table td, table.table th { vertical-align: middle; }
-    .scan-header {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 28px;
-      font-weight: 600;
-    }
   </style>
 </head>
+  
 <body>
+
 <div class="container mt-5">
+
+  <!-- HEADER -->
+  <div id="custom_header">
+<div th:replace="fragments/header :: header"></div>
+  </div>
+
   <h2>📦 Scan & Pack</h2>
 
-    <!-- 진행률 -->
-    <div class="progress mb-3">
-      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-           role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-    </div>
-    <div id="summaryInfo">⏱ 경과 시간: 0초</div>
+  <!-- 진행률 -->
+  <div class="progress mb-3">
+    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+  </div>
+  <div id="summaryInfo">⏱ 경과 시간: 0초</div>
 
-    <!-- 입력 -->
-    <input id="orderBarcode" class="form-control mb-2" placeholder="주문번호 스캔">
-    <input id="productBarcode" class="form-control mb-2" placeholder="상품 바코드 스캔" disabled>
+  <!-- 입력 -->
+  <input id="orderBarcode" class="form-control mb-2" placeholder="주문번호 스캔">
+  <input id="productBarcode" class="form-control mb-2" placeholder="상품 바코드 스캔" disabled>
 
-    <div id="loadingIndicator" style="display:none; color:#007bff; font-weight:bold; margin-bottom:10px;">⏳ 주문 정보를 불러오는 중...</div>
+  <div id="loadingIndicator" style="display:none; color:#007bff; font-weight:bold; margin-bottom:10px;">
+    ⏳ 주문 정보를 불러오는 중...
+  </div>
 
   <!-- 전체 상품 완료 버튼 -->
   <button id="completeAllButton" class="btn btn-primary mb-3">✅ 전체 상품 완료</button>
 
+  <!-- 주문 상품 목록 -->
   <div id="orderItems" class="mt-4"></div>
+
+  <!-- 저장 버튼 -->
   <button id="saveButton" class="btn btn-success mt-3">💾 저장</button>
+
+  <!-- 로그 -->
+  <h5 class="mt-4">📜 스캔 로그</h5>
+  <div id="log"></div>
+
+  <!-- 오류 상품 -->
+  <div id="errorItems" class="mt-4"></div>
+
 </div>
 
-    <div id="orderItems" class="mt-3"></div>
 
-    <!-- 로그 -->
-    <h5 class="mt-4">📜 스캔 로그</h5>
-    <div id="log"></div>
-
-    <!-- 오류 상품 목록 -->
-    <div id="errorItems"></div>
-  </div>
-
-  <!-- 처리 모달 -->
-  <div class="modal fade" id="processModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">상품 처리</h5>
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-        </div>
-        <div class="modal-body" id="processModalBody"></div>
+<!-- 처리 모달 -->
+<div class="modal fade" id="processModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">상품 처리</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
+      <div class="modal-body" id="processModalBody"></div>
     </div>
   </div>
+</div>
 
-  <!-- JS -->
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-  <script>
+
+<!-- JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<script>
+
+$(function () {
+
+  let orderItems = [];
+  let scannedErrorItems = [];
+  let startTime = null;
+  let currentFilter = 'all';
+  let progressTimer = null;
+
   $(function () {
     let orderItems = [];
     let scannedErrorItems = [];
@@ -428,6 +431,7 @@ if (!isScanningComplete) {
       setTimeout(()=>row.removeClass('highlight'),700);
     }
   });
+});
   </script>
 </body>
 </html>

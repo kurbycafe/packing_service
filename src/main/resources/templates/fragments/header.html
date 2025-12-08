@@ -1,44 +1,56 @@
 <!-- templates/fragments/header.html -->
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<body>
 
 <header class="p-3 bg-light text-dark" th:fragment="header">
-  <!-- <link rel="stylesheet" th:href="@{/css/header.css}">
-  <link rel="stylesheet" th:href="@{/css/footer.css}">
-  <link rel="stylesheet" th:href="@{/css/main.css}"> -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css"
+        rel="stylesheet" crossorigin="anonymous">
+
   <div class="container">
-<div class="d-flex flex-wrap  w-100">
-  <!-- 왼쪽 영역: 로고 없어도 괜찮음 -->
-<a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none">
-    <span class="fs-4">home</span>
-  
-</a>
-  <!-- 오른쪽 정렬 영역 -->
-  <div class="ms-auto text-end">
-    <span th:if="${loginUser != null}">
-      <div class="d-flex align-items-center justify-content-end">
-        <strong th:text="${loginUser}" class="me-3">사용자</strong>님, 환영합니다!
-        <a th:href="@{/mypage}" class="btn btn-outline-dark mx-3 text-decoration-none">마이페이지</a>
-        <form th:action="@{/logout}" method="post" class="mb-0">
-          <button type="submit" class="btn btn-danger me-2">Logout</button>
-        </form>
+    <div class="d-flex flex-wrap w-100">
+
+      <!-- 왼쪽 로고 -->
+      <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 text-dark text-decoration-none">
+        <span class="fs-4">home</span>
+      </a>
+
+      <!-- 오른쪽 로그인/로그아웃 영역 -->
+      <div class="ms-auto text-end">
+
+        <span th:if="${loginUser != null}">
+          <!-- Build a navbar with Bootstrap 5, showing 재고, 출고기록 on left side, username, mypage, and logout button on right side -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light w-100">
+            <div class="container-fluid">
+              <a class="navbar-brand" href="/inventory/list">재고</a>
+              <a class="navbar-brand" href="/history/list">출고기록</a>
+              <div class="collapse navbar-collapse justify-content-end">
+                <ul class="navbar-nav mb-2 mb-lg-0">
+                  <li class="nav-item">
+                    <span class="nav-link disabled" th:text="${loginUser}">사용자</span>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" th:href="@{/mypage}">마이페이지</a>
+                  </li>
+                  <li class="nav-item">
+                    <form th:action="@{/logout}" method="post" class="d-inline">
+                      <button type="submit" class="btn btn-danger">Logout</button>
+                    </form>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </nav>
+         
+        </span>
+
+        <span th:if="${loginUser == null}">
+          <a th:href="@{/login}" class="btn btn-outline-dark me-2 text-decoration-none">Login</a>
+          <a th:href="@{/Signup}" class="btn btn-danger me-2 text-decoration-none">Sign-up</a>
+        </span>
+
       </div>
-    </span>
-
-    <span th:if="${loginUser == null}">
-      <a th:href="@{/login}" class="btn btn-outline-dark me-2 text-decoration-none">Login</a>
-      <a th:href="@{/Signup}" class="btn btn-danger me-2 text-decoration-none">Sign-up</a>
-    </span>
+    </div>
   </div>
-</div>
 
-
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
+          crossorigin="anonymous"></script>
 </header>
-
-</body>
-</html>
-
