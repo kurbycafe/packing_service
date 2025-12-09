@@ -16,8 +16,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class InventoryController {
 
    @GetMapping("/list")
-   public void inventoryList() {
+   public String inventoryList() {
     System.err.println("parmas received");
+    return "inventory/list";
+   }
+   
+   @GetMapping("/add")
+   public String getMethodName() {
+       return "inventory/add";
    }
    
 

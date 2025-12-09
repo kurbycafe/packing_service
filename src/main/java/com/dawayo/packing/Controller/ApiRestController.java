@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 
 
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -40,7 +41,7 @@ public class ApiRestController {
     public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber)
             throws IOException, InterruptedException {
 
-        System.err.println("? ÁÖ¹® ¹øÈ£ ¿äÃ»: " + orderNumber);
+        System.err.println("? ï¿½Ö¹ï¿½ ï¿½ï¿½È£ ï¿½ï¿½Ã»: " + orderNumber);
         if (orderService.existsByOrderNumber(orderNumber)) {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
@@ -51,13 +52,13 @@ public class ApiRestController {
                 "https://dawayo.de/wp-json/wc/v3/orders/%s?consumer_key=%s&consumer_secret=%s",
                 orderNumber, consumer_key, consumer_secret);
 
-        System.err.println("? ÁÖ¹® API ¿äÃ»: " + orderUrl);
+        System.err.println("? ï¿½Ö¹ï¿½ API ï¿½ï¿½Ã»: " + orderUrl);
 
         HttpResponse<String> orderResponse = sendRequest(orderUrl);
         String orderBody = orderResponse.body();
 
         if (!isJson(orderBody)) {
-            System.err.println("? JSON Çü½Ä ¾Æ´Ô (" + orderResponse.statusCode() + ")");
+            System.err.println("? JSON ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´ï¿½ (" + orderResponse.statusCode() + ")");
             return ResponseEntity.status(500).body("WooCommerce returned invalid response (not JSON)");
         }
 
@@ -80,7 +81,7 @@ public class ApiRestController {
                         resultArray.add(itemNode);
                     }
                 } catch (Exception e) {
-                    System.err.println("?? Line item Ã³¸® Áß ¿À·ù: " + e.getMessage());
+                    System.err.println("?? Line item Ã³ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½: " + e.getMessage());
                 }
             }, executor));
         }
@@ -92,7 +93,7 @@ public class ApiRestController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(resultJson);
     }
 
-    /** °¢ »óÇ°º° »ó¼¼ µ¥ÀÌÅÍ Ã³¸® */
+    /** ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ */
 private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         throws IOException, InterruptedException {
 
@@ -102,11 +103,11 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     String productId = String.valueOf(item.get("product_id"));
 
     // -------------------------
-    // WooCommerce¿¡¼­ »óÇ° °³º° °¡°Ý (incl)
+    // WooCommerceï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç° ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (incl)
     // -------------------------
     double price = 0.0;
 
-    // ? À¯Åë±âÇÑ (meta_data)
+    // ? ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (meta_data)
     String MHD = "";
     List<Map<String, Object>> metaDataList = (List<Map<String, Object>>) item.get("meta_data");
 
@@ -114,12 +115,12 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         for (Map<String, Object> meta : metaDataList) {
             String key = (String) meta.get("key");
 
-            // À¯Åë±âÇÑ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             if ("_wcxd_expiry_date".equals(key)) {
                 MHD = (String) meta.get("display_value");
             }
 
-            // °³º° °¡°Ý incl
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ incl
             if ("_wcpdf_regular_price".equals(key)) {
                 Map<String, Object> priceMap = (Map<String, Object>) meta.get("value");
                 if (priceMap != null && priceMap.get("incl") != null) {
@@ -131,10 +132,10 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // ? ³¯Â¥ º¯È¯ (ÇÑ±¹¾î ¡æ µ¶ÀÏ½Ä)
+    // ? ï¿½ï¿½Â¥ ï¿½ï¿½È¯ (ï¿½Ñ±ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ï½ï¿½)
     MHD = convertDateToGerman(MHD);
 
-    // ? WooCommerce »óÇ° API È£Ãâ
+    // ? WooCommerce ï¿½ï¿½Ç° API È£ï¿½ï¿½
     String productUrl = String.format(
             "https://dawayo.de/wp-json/wc/v3/products/%s?consumer_key=%s&consumer_secret=%s",
             productId, consumer_key, consumer_secret);
@@ -142,14 +143,14 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     HttpResponse<String> productResponse = sendRequest(productUrl);
     String productBody = productResponse.body();
     if (!isJson(productBody)) {
-        System.err.println("? product JSON Çü½Ä ¾Æ´Ô: " + productId);
+        System.err.println("? product JSON ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´ï¿½: " + productId);
         return itemNode;
     }
 
     Map<String, Object> productMap = objectMapper.readValue(productBody, new TypeReference<>() {});
 
 
-    // ? SKU °¡Á®¿À±â (meta_data > key = "custom_product_sku")
+    // ? SKU ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (meta_data > key = "custom_product_sku")
     String sku = "";
     List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
     if (metaList != null) {
@@ -161,14 +162,14 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // ? ÀÌ¹ÌÁö URL
+    // ? ï¿½Ì¹ï¿½ï¿½ï¿½ URL
     String imageUrl = "";
     List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
     if (images != null && !images.isEmpty()) {
         imageUrl = String.valueOf(images.get(0).get("src"));
     }
 
-    // ? Ãß°¡ ¸ÞÅ¸µ¥ÀÌÅÍ (¿¹: expiredate)
+    // ? ï¿½ß°ï¿½ ï¿½ï¿½Å¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½: expiredate)
     String expiredate = "";
     if (metaList != null) {
         for (Map<String, Object> meta : metaList) {
@@ -178,12 +179,12 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         }
     }
 
-    // ? °á°ú JSON ±¸¼º
+    // ? ï¿½ï¿½ï¿½ JSON ï¿½ï¿½ï¿½ï¿½
     itemNode.put("orderNumber", orderNumber);
     itemNode.put("name", name);
     itemNode.put("quantity", quantity);
     itemNode.put("MHD", MHD);
-    itemNode.put("sku", sku);           // ¡ç ¼öÁ¤µÈ ºÎºÐ
+    itemNode.put("sku", sku);           // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îºï¿½
     itemNode.put("expiredate", expiredate);
     itemNode.put("price", price);
     itemNode.put("imageUrl", imageUrl);
@@ -193,11 +194,11 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
 }
 
 
-    /** ³¯Â¥ º¯È¯ (ÇÑ±¹¾î ¡æ µ¶ÀÏ¾î Çü½Ä) */
+    /** ï¿½ï¿½Â¥ ï¿½ï¿½È¯ (ï¿½Ñ±ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¾ï¿½ ï¿½ï¿½ï¿½ï¿½) */
     private String convertDateToGerman(String MHD) {
         if (MHD == null || MHD.isBlank()) return "";
         try {
-            SimpleDateFormat koreanFormat = new SimpleDateFormat("M¿ù d, yyyy", Locale.KOREAN);
+            SimpleDateFormat koreanFormat = new SimpleDateFormat("Mï¿½ï¿½ d, yyyy", Locale.KOREAN);
             Date date = koreanFormat.parse(MHD);
             SimpleDateFormat germanFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.GERMAN);
             return germanFormat.format(date);
@@ -218,7 +219,7 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
                 .header("User-Agent", "Mozilla/5.0 DawayoPackingClient/2.0")
                 .GET().build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.err.println("? API ¿äÃ»: " + response.statusCode() + " (" + url + ")");
+        System.err.println("? API ï¿½ï¿½Ã»: " + response.statusCode() + " (" + url + ")");
         return response;
     }
 
@@ -227,8 +228,8 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         List<PackingVO> scannedItems = request.getScannedItems();
         List<ScanErrorVO> scannedErrorItems = request.getScannedErrorItems();
 
-        System.out.println("? Á¤»ó ¾ÆÀÌÅÛ ¼ö: " + (scannedItems != null ? scannedItems.size() : 0));
-        System.out.println("?? ¿À·ù ¾ÆÀÌÅÛ ¼ö: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
+        System.out.println("? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½: " + (scannedItems != null ? scannedItems.size() : 0));
+        System.out.println("?? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
 
         if (scannedItems != null) orderService.saveAll(scannedItems);
         if (scannedErrorItems != null) orderService.saveAllError(scannedErrorItems);
@@ -238,50 +239,77 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
 
    @GetMapping("/updateProductList")
 public void getMethodName() throws IOException, InterruptedException {
-    int page = 1; // ÆäÀÌÁö ¹øÈ£ ÃÊ±âÈ­
-    int perPage = 100; // ÇÑ ÆäÀÌÁö¿¡ 100°³ »óÇ° °¡Á®¿À±â
-    List<Map<String, Object>> allProducts = new ArrayList<>(); // ¸ðµç »óÇ°À» ÀúÀåÇÒ ¸®½ºÆ®
-System.err.println("Å×½ºÆ®");
-    // ¹Ýº¹¹®À» ÅëÇØ ¿©·¯ ÆäÀÌÁöÀÇ µ¥ÀÌÅÍ¸¦ ¸ðµÎ °¡Á®¿À±â
+    int page = 1; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ ï¿½Ê±ï¿½È­
+    int perPage = 100; // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 100ï¿½ï¿½ ï¿½ï¿½Ç° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    List<Map<String, Object>> allProducts = new ArrayList<>(); // ï¿½ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®
+System.err.println("ï¿½×½ï¿½Æ®");
+    // ï¿½Ýºï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     // while (true) {
     //     String productUrl = String.format(
     //         "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
     //         consumer_key, consumer_secret, perPage, page
     //     );
-    //     System.err.println("? Produktliste aktualisieren API ¿äÃ»: " + productUrl); 
+    //     System.err.println("? Produktliste aktualisieren API ï¿½ï¿½Ã»: " + productUrl); 
 
-    //     // API ¿äÃ» ¹× ÀÀ´ä Ã³¸®
+    //     // API ï¿½ï¿½Ã» ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½
     //     try {
-    //         HttpResponse<String> productResponse = sendRequest(productUrl); // API ¿äÃ»
-    //         String productBody = productResponse.body(); // ÀÀ´ä º»¹®
+    //         HttpResponse<String> productResponse = sendRequest(productUrl); // API ï¿½ï¿½Ã»
+    //         String productBody = productResponse.body(); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 
-    //         // ObjectMapper·Î JSON ¹è¿­À» List<Map<String, Object>>·Î º¯È¯
+    //         // ObjectMapperï¿½ï¿½ JSON ï¿½è¿­ï¿½ï¿½ List<Map<String, Object>>ï¿½ï¿½ ï¿½ï¿½È¯
     //         ObjectMapper objectMapper = new ObjectMapper();
     //         List<Map<String, Object>> productList = objectMapper.readValue(productBody, new TypeReference<List<Map<String, Object>>>() {});
 
-    //         // ¸¸¾à »óÇ°ÀÌ ¾øÀ¸¸é ¹Ýº¹ Á¾·á
+    //         // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ýºï¿½ ï¿½ï¿½ï¿½ï¿½
     //         if (productList.isEmpty()) {
     //             break;
     //         }
 
-    //         // °¡Á®¿Â »óÇ°À» ¸ðµç ¸®½ºÆ®¿¡ Ãß°¡
+    //         // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ß°ï¿½
     //         allProducts.addAll(productList);
 
-    //         // ÆäÀÌÁö ¹øÈ£ Áõ°¡
+    //         // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ ï¿½ï¿½ï¿½ï¿½
     //         page++;
     //     } catch (IOException | InterruptedException e) {
     //         e.printStackTrace();
-    //         break;  // ¿¡·¯°¡ ¹ß»ýÇÏ¸é ¹Ýº¹ Á¾·á
+    //         break;  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ï¿½Ï¸ï¿½ ï¿½Ýºï¿½ ï¿½ï¿½ï¿½ï¿½
     //     }
     // }
 
-    // // ¸ðµç »óÇ°À» Ãâ·Â
-    // System.err.println("? ÃÑ »óÇ° ¸ñ·Ï: " + allProducts.size() + "°³ »óÇ°");
+    // // ï¿½ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ ï¿½ï¿½ï¿½
+    // System.err.println("? ï¿½ï¿½ ï¿½ï¿½Ç° ï¿½ï¿½ï¿½: " + allProducts.size() + "ï¿½ï¿½ ï¿½ï¿½Ç°");
     // for (Map<String, Object> product : allProducts) {
-    //     String productName = (String) product.get("name"); // »óÇ°¸í
-    //     String productPrice = (String) product.get("price"); // °¡°Ý (API¿¡¼­ °¡°ÝÀº StringÀ¸·Î Á¦°øµÊ)
-    //     System.out.println("»óÇ°¸í: " + productName + ", °¡°Ý: " + productPrice);
+    //     String productName = (String) product.get("name"); // ï¿½ï¿½Ç°ï¿½ï¿½
+    //     String productPrice = (String) product.get("price"); // ï¿½ï¿½ï¿½ï¿½ (APIï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Stringï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
+    //     System.out.println("ï¿½ï¿½Ç°ï¿½ï¿½: " + productName + ", ï¿½ï¿½ï¿½ï¿½: " + productPrice);
     // }
 }
+
+@PostMapping("/productSearch")
+@ResponseBody
+public String productSearch(@RequestParam("query") String query)
+        throws IOException, InterruptedException {
+
+    System.err.println("request received: " + query);
+
+    String url = String.format(
+            "https://dawayo.de/wp-json/wc/v3/products?search=%s&consumer_key=%s&consumer_secret=%s",
+            query, consumer_key, consumer_secret);
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Basic " + Base64.getEncoder()
+                    .encodeToString((consumer_key + ":" + consumer_secret).getBytes()))
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    System.err.println("API Response: " + response.body());
+
+    return response.body();
+}
+
+
 }
