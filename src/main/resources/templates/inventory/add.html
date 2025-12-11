@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        tr:hover { background-color: #f5f5f5; }
+        .search-box { margin-bottom: 20px; }
+        input[type="text"] { padding: 8px; width: 300px; }
+    </style>
+</head>
+<body>
+
+<h1>Inventory add</h1>
+
+<div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search by name or SKU...">
+</div>
+
+<ul id="results"></ul> <!-- ★ 결과 출력 영역 추가 ★ -->
+
+<script>
+$(document).ready(function() {
+
+    $('#searchInput').on('keydown', function(e) {
+console.log("키다운 이벤트 발생");
+        if (e.key === "Enter" || e.keyCode === 13) {
+            e.preventDefault();  // ★ 폼 자동 제출 방지 ★
+
+            let query = $(this).val();
+
+            $.ajax({
+                url: "/api/productSearch",
+                type: "POST",
+                data: { query: query },
+                success: function(data) {
+
+                    $("#results").empty();  
+
+                    console.log("검색 결과:", data);
+
+                    let products;
+
+                    // 응답이 이미 JSON인지 아닌지 체크
+                    if (typeof data === "string") {
+                        products = JSON.parse(data);
+                    } else {
+                        products = data;
+                    }
+
+                    products.forEach(p => {
+                        $("#results").append("<li>" + p.name + " - " + p.price + "</li>");
+                    });
+                },
+                error: function(err) {
+                    console.error("에러 발생:", err);
+                }
+            });
+        }
+
+    });
+
+});
+</script>
+
+</body>
+</html>

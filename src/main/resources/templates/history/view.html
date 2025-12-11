@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan & Pack</title>
+  <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding-top: 50px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .highlight { animation: blink 0.7s alternate infinite; }
+    @keyframes blink { from { background-color: #fff3cd; } to { background-color: #ffeeba; } }
+    #summaryInfo { font-size: 16px; font-weight: 500; margin-top: 10px; }
+    #log { font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; padding: 10px; height: 120px; overflow-y: auto; border-radius: 5px; }
+    input.form-control { font-size: 18px; }
+    .progress { height: 25px; border-radius: 12px; overflow: hidden; }
+  </style>
+</head>
+  
+<body>
+
+<div class="container mt-5">
+
+  <!-- HEADER -->
+  <div id="custom_header">
+<div th:replace="fragments/header :: header"></div>
+  </div>
+
+    <div class="card mt-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">출고 기록</h4>
+    </div>
+
+    <div class="card-body">
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>상품명</th>
+                    <th>SKU</th>
+                    <th>스캔된 수량 </th>
+                    <th>수량</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr th:each="item : ${packing}">
+                    <td th:text="${item.productName}"></td>
+                    <td th:text="${item.productSku}"></td>
+                    <td th:text="${item.scannedQuantity}"></td>
+                    <td th:text="${item.productQ}"></td>
+                </tr>
+            </tbody>
+
+        </table>
+
+    </div>
+</div>
+
+
+
+
+<!-- JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+
+</body>
+</html>
+<!DOCTYPE html>
