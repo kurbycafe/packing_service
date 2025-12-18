@@ -242,48 +242,48 @@ public void getMethodName() throws IOException, InterruptedException {
     int page = 1; // ������ ��ȣ �ʱ�ȭ
     int perPage = 100; // �� �������� 100�� ��ǰ ��������
     List<Map<String, Object>> allProducts = new ArrayList<>(); // ��� ��ǰ�� ������ ����Ʈ
-System.err.println("�׽�Ʈ");
-    // �ݺ����� ���� ���� �������� �����͸� ��� ��������
-    // while (true) {
-    //     String productUrl = String.format(
-    //         "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
-    //         consumer_key, consumer_secret, perPage, page
-    //     );
-    //     System.err.println("? Produktliste aktualisieren API ��û: " + productUrl); 
 
-    //     // API ��û �� ���� ó��
-    //     try {
-    //         HttpResponse<String> productResponse = sendRequest(productUrl); // API ��û
-    //         String productBody = productResponse.body(); // ���� ����
+    while (true) {
+        String productUrl = String.format(
+            "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
+            consumer_key, consumer_secret, perPage, page
+        );
+        String url = "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=" + consumer_key + "&consumer_secret=" + consumer_secret + "&per_page=" + perPage + "&page=" + page;
+        System.err.println("? Produktliste aktualisieren API ��û: " + productUrl); 
+
+        // API ��û �� ���� ó��
+        try {
+            HttpResponse<String> productResponse = sendRequest(url); // API ��û
+            String productBody = productResponse.body(); // ���� ����
 
 
-    //         // ObjectMapper�� JSON �迭�� List<Map<String, Object>>�� ��ȯ
-    //         ObjectMapper objectMapper = new ObjectMapper();
-    //         List<Map<String, Object>> productList = objectMapper.readValue(productBody, new TypeReference<List<Map<String, Object>>>() {});
+            // ObjectMapper�� JSON �迭�� List<Map<String, Object>>�� ��ȯ
+            ObjectMapper objectMapper = new ObjectMapper();
+            List<Map<String, Object>> productList = objectMapper.readValue(productBody, new TypeReference<List<Map<String, Object>>>() {});
+        System.err.println(productList);
+            // ���� ��ǰ�� ������ �ݺ� ����
+            if (productList.isEmpty()) {
+                break;
+            }
 
-    //         // ���� ��ǰ�� ������ �ݺ� ����
-    //         if (productList.isEmpty()) {
-    //             break;
-    //         }
+            // ������ ��ǰ�� ��� ����Ʈ�� �߰�
+            allProducts.addAll(productList);
 
-    //         // ������ ��ǰ�� ��� ����Ʈ�� �߰�
-    //         allProducts.addAll(productList);
+            // ������ ��ȣ ����
+            page++;
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            break;  // ������ �߻��ϸ� �ݺ� ����
+        }
+    }
 
-    //         // ������ ��ȣ ����
-    //         page++;
-    //     } catch (IOException | InterruptedException e) {
-    //         e.printStackTrace();
-    //         break;  // ������ �߻��ϸ� �ݺ� ����
-    //     }
-    // }
-
-    // // ��� ��ǰ�� ���
-    // System.err.println("? �� ��ǰ ���: " + allProducts.size() + "�� ��ǰ");
-    // for (Map<String, Object> product : allProducts) {
-    //     String productName = (String) product.get("name"); // ��ǰ��
-    //     String productPrice = (String) product.get("price"); // ���� (API���� ������ String���� ������)
-    //     System.out.println("��ǰ��: " + productName + ", ����: " + productPrice);
-    // }
+    // ��� ��ǰ�� ���
+    System.err.println("? �� ��ǰ ���: " + allProducts.size() + "�� ��ǰ");
+    for (Map<String, Object> product : allProducts) {
+        String productName = (String) product.get("name"); // ��ǰ��
+        String productPrice = (String) product.get("price"); // ���� (API���� ������ String���� ������)
+        System.out.println("��ǰ��: " + productName + ", ����: " + productPrice);
+    }
 }
 
 @PostMapping("/productSearch")

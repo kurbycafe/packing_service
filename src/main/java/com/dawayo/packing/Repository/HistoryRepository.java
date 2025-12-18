@@ -22,31 +22,33 @@ public class HistoryRepository {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public Page<PackingVO> findPackingList(Pageable pageable) {  // @Override 제거
-        String jpql =
-            "SELECT p FROM PackingVO p " +
-            "WHERE p.id = (" +
-            "   SELECT MAX(p2.id) FROM PackingVO p2 WHERE p2.orderNumber = p.orderNumber" +
-            ") " +
-            "ORDER BY p.orderNumber DESC";
+  public Page<PackingVO> findPackingList(Pageable pageable) {
 
-        String countJpql =
-            "SELECT COUNT(p) FROM PackingVO p " +
-            "WHERE p.id = (" +
-            "   SELECT MAX(p2.id) FROM PackingVO p2 WHERE p2.orderNumber = p.orderNumber" +
-            ")";
+    String jpql =
+        "SELECT p FROM PackingVO p " +
+        "WHERE p.id IN (" +
+        "   SELECT MAX(p2.id) FROM PackingVO p2 GROUP BY p2.orderNumber" +
+        ") " +
+        "ORDER BY p.orderNumber DESC";
 
-        Long total = entityManager.createQuery(countJpql, Long.class)
-                                .getSingleResult();
+    String countJpql =
+        "SELECT COUNT(p) FROM PackingVO p " +
+        "WHERE p.id IN (" +
+        "   SELECT MAX(p2.id) FROM PackingVO p2 GROUP BY p2.orderNumber" +
+        ")";
 
-        List<PackingVO> content = entityManager
-                .createQuery(jpql, PackingVO.class)
-                .setFirstResult((int) pageable.getOffset())
-                .setMaxResults(pageable.getPageSize())
-                .getResultList();
+    Long total = entityManager.createQuery(countJpql, Long.class)
+                              .getSingleResult();
 
-        return new PageImpl<>(content, pageable, total);
-    }
+    List<PackingVO> content = entityManager
+            .createQuery(jpql, PackingVO.class)
+            .setFirstResult((int) pageable.getOffset())
+            .setMaxResults(pageable.getPageSize())
+            .getResultList();
+
+    return new PageImpl<>(content, pageable, total);
+}
+
 
     public List<PackingVO> getPackingById(String id) {
        String jpql = "SELECT p FROM PackingVO p WHERE p.orderNumber = :id";
