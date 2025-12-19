@@ -256,7 +256,7 @@ public void getMethodName() throws IOException, InterruptedException {
         // API ��û �� ���� ó��
         try {
             HttpResponse<String> productResponse = sendRequest(url); // API ��û
-            String productBody = productResponse.body(); // ���� ����
+            String productBody = productResponse.body();  // ���� ����
 
 
             // ObjectMapper�� JSON �迭�� List<Map<String, Object>>�� ��ȯ
