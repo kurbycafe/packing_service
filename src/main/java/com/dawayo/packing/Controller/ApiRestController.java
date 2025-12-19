@@ -249,6 +249,8 @@ public void getMethodName() throws IOException, InterruptedException {
         //     consumer_key, consumer_secret, perPage, page
         // );
         String url = "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=ck_b2f69874352c6c35c49dff10d254a36986a2cc26&consumer_secret=cs_e36d3ff7a86398ceb6885cac27b921c6b6707ce7&per_page=100&page=50";
+        
+        
         //System.err.println("? Produktliste aktualisieren API ��û: " + productUrl); 
 
         // API ��û �� ���� ó��
