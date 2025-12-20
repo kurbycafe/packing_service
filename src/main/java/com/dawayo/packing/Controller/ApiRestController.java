@@ -237,57 +237,6 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         return ResponseEntity.ok("Scanned items received successfully");
     }
 
-   @GetMapping("/updateProductList")
-public void getMethodName() throws IOException, InterruptedException {
-    int page = 1; // ������ ��ȣ �ʱ�ȭ
-    int perPage = 100; // �� �������� 100�� ��ǰ ��������
-    List<Map<String, Object>> allProducts = new ArrayList<>(); // ��� ��ǰ�� ������ ����Ʈ
-
-    while (true) {
-        // String productUrl = String.format(
-        //     "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
-        //     consumer_key, consumer_secret, perPage, page
-        // );
-        String url = "https://dawayo.de/wp-json/wc/v3/products/?consumer_key=ck_b2f69874352c6c35c49dff10d254a36986a2cc26&consumer_secret=cs_e36d3ff7a86398ceb6885cac27b921c6b6707ce7&per_page=100&page=50";
-        
-        
-        //System.err.println("? Produktliste aktualisieren API ��û: " + productUrl); 
-
-        // API ��û �� ���� ó��
-        try {
-            HttpResponse<String> productResponse = sendRequest(url); // API ��û
-            String productBody = productResponse.body();  // ���� ����
-
-
-            // ObjectMapper�� JSON �迭�� List<Map<String, Object>>�� ��ȯ
-            ObjectMapper objectMapper = new ObjectMapper();
-            List<Map<String, Object>> productList = objectMapper.readValue(productBody, new TypeReference<List<Map<String, Object>>>() {});
-        System.err.println(productList);
-            // ���� ��ǰ�� ������ �ݺ� ����
-            if (productList.isEmpty()) {
-                break;
-            }
-
-            // ������ ��ǰ�� ��� ����Ʈ�� �߰�
-            allProducts.addAll(productList);
-
-            // ������ ��ȣ ����
-            page++;
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            break;  // ������ �߻��ϸ� �ݺ� ����
-        }
-    }
-
-    // ��� ��ǰ�� ���
-    System.err.println("? �� ��ǰ ���: " + allProducts.size() + "�� ��ǰ");
-    for (Map<String, Object> product : allProducts) {
-        String productName = (String) product.get("name"); // ��ǰ��
-        String productPrice = (String) product.get("price"); // ���� (API���� ������ String���� ������)
-        System.out.println("��ǰ��: " + productName + ", ����: " + productPrice);
-    }
-}
-
 @PostMapping("/productSearch")
 @ResponseBody
 public String productSearch(@RequestParam("query") String query)
