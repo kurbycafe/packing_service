@@ -480,13 +480,14 @@ $(document).on('input', '#replaceName', function() {
       type: 'POST',
       data: { query: query },
       success: function(results) {
+
         let html = '';
         if (!results || results.length === 0) {
           html = `<div class="list-group-item">검색 결과 없음</div>`;
         } else {
           results.forEach(p => {
             html += `<button type="button" class="list-group-item list-group-item-action" 
-                         data-name="${p.name}" data-sku="${p.sku}">
+                         data-name="${p.name}" data-sku="${p.sku}" data-expiry-date="${p.expiryDate || ''}"   data-price="${p.price || ''}">
                       ${p.name} (${p.sku})
                      </button>`;
           });
@@ -502,8 +503,11 @@ $(document).on('input', '#replaceName', function() {
 
 // 검색 결과 클릭 시 input에 값 채움
 $(document).on('click', '#replaceSearchResults button', function() {
+  console.log('Clicked item:', this);
   const name = $(this).data('name');
   const sku = $(this).data('sku');
+  const expDate = $(this).data('expiryDate') || '';
+  $('#replaceMHD').val(expDate);
   $('#replaceName').val(name).data('sku', sku);
   $('#replaceSearchResults').empty().hide();
 });

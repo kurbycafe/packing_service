@@ -1,7 +1,9 @@
 package com.dawayo.packing.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,14 +58,28 @@ public class ProductService {
     }
 
     public List<Map<String, String>> searchProducts(String query) {
-        List<Object[]> results = productRepository.searchProductsNative(query);
-        List<Map<String, String>> mapped = new ArrayList<>();
-        for(Object[] r : results){
-            Map<String,String> m = new HashMap<>();
-            m.put("name", String.valueOf(r[0]));
-            m.put("sku", String.valueOf(r[1]));
-            mapped.add(m);
-        }
-        return mapped;
-    }
+
+    List<ProductVO> products = productRepository.searchProducts(query);
+
+
+    return products.stream().map(p -> {
+
+        Map<String, String> m = new HashMap<>();
+
+        m.put("name", p.getName());
+        m.put("sku", p.getSku());
+        m.put("price", p.getPrice());
+        m.put("salePrice", p.getSalePrice());
+        m.put("wooId", String.valueOf(p.getWooId()));
+
+        // 가장 빠른 유통기한 하나만
+        p.getBatches().stream()
+            .map(ProductBatchVO::getExpiryDate)
+            .min(LocalDate::compareTo)
+            .ifPresent(d -> m.put("expiryDate", d.toString()));
+
+        return m;
+    }).toList();
+}
+
 }

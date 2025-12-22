@@ -14,8 +14,13 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<ProductVO, Long> {
     Optional<ProductVO> findByWooId(Long wooId);
 
-    @Query(value = "SELECT p.name, p.sku FROM product_table p WHERE p.name LIKE CONCAT('%', :query, '%') LIMIT 10", nativeQuery = true)
-    List<Object[]> searchProductsNative(@Param("query") String query);
+    @Query("""
+        SELECT DISTINCT p
+        FROM ProductVO p
+        LEFT JOIN FETCH p.batches b
+        WHERE p.name LIKE %:query%
+    """)
+    List<ProductVO> searchProducts(@Param("query") String query);
 
 
 

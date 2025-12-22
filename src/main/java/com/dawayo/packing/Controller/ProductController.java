@@ -160,10 +160,10 @@ public class ProductController {
    @PostMapping("/productSearch")
     @ResponseBody
     public List<Map<String, String>> productSearch(@RequestParam("query") String query) {
-        // searchProducts는 query를 받아서 [{name: "상품1", sku:"123"}, ...] 형태의 리스트 반환
+
         List<Map<String, String>> results = productService.searchProducts(query);
 System.err.println(results.toString());
-        // 예: [{"name":"상품1", "sku":"123"}, {"name":"상품2", "sku":"456"}]
+ 
         return results;
     }
 
