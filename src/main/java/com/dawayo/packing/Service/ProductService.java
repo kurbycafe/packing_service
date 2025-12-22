@@ -1,7 +1,10 @@
 package com.dawayo.packing.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,5 +53,17 @@ public class ProductService {
         product.setTotalStock(totalStock);
 
         productRepository.save(product); // cascade로 batch도 저장
+    }
+
+    public List<Map<String, String>> searchProducts(String query) {
+        List<Object[]> results = productRepository.searchProductsNative(query);
+        List<Map<String, String>> mapped = new ArrayList<>();
+        for(Object[] r : results){
+            Map<String,String> m = new HashMap<>();
+            m.put("name", String.valueOf(r[0]));
+            m.put("sku", String.valueOf(r[1]));
+            mapped.add(m);
+        }
+        return mapped;
     }
 }

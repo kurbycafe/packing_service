@@ -163,39 +163,129 @@
     });
 
     // 테이블 렌더링
-    function renderOrderItems(){
-      if(!orderItems.length) return $('#orderItems').html('');
-      let html=`<table class="table table-bordered table-sm"><thead><tr>
-<th>상품 이미지</th><th>상품명</th><th>유통기한</th><th>SKU</th>
-<th>개별 가격</th><th>주문수량</th><th>스캔수량</th><th>상태</th>
-<th>+1</th><th>-1</th><th>완료</th><th>처리</th><th>오류추가</th>
-</tr></thead><tbody>`;
-      orderItems.forEach((i,idx)=>{
-        const done=i.scannedCount>=i.quantity;
-        if(currentFilter==='done'&&!done) return;
-        if(currentFilter==='progress'&&done) return;
-        const rowId=CSS.escape(i.sku||'nosku'+idx);
-        const imageUrl=i.imageUrl||'';
-        const unitPrice=i.price??0.0;
-        html+=`<tr class="${done?'table-success':'table-warning'}" id="${rowId}">
-<td>${imageUrl?`<img src="${imageUrl}" style="width:50px;height:auto;">`:''}</td>
-<td>${i.name}</td>
-<td>${i.MHD??''}</td>
-<td>${i.sku??''}</td>
-<td>${unitPrice.toFixed(2)}</td>
-<td>${i.quantity}</td>
-<td>${i.scannedCount}</td>
-<td>${done?'완료':'진행중'}</td>
-<td><button class="btn btn-sm btn-outline-primary inc" data-idx="${idx}">+1</button></td>
-<td><button class="btn btn-sm btn-outline-danger dec" data-idx="${idx}">-1</button></td>
-<td><button class="btn btn-sm btn-success scanAll" data-idx="${idx}">완료</button></td>
-<td><button class="btn btn-sm btn-secondary process" data-idx="${idx}">처리</button></td>
-<td><button class="btn btn-sm btn-danger addError" data-idx="${idx}">❌ 오류</button></td>
-</tr>`;
-      });
-      html+='</tbody></table>';
-      $('#orderItems').html(html);
+function renderOrderItems(){
+  if(!orderItems.length) {
+    $('#orderItems').html('');
+    return;
+  }
+
+  let html = `
+    <table class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>상품 이미지</th>
+          <th>상품명</th>
+          <th>유통기한</th>
+          <th>SKU</th>
+          <th>개별 가격</th>
+          <th>주문수량</th>
+          <th>스캔수량</th>
+          <th>상태</th>
+          <th>+1</th>
+          <th>-1</th>
+          <th>완료</th>
+          <th>처리</th>
+          <th>오류추가</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  orderItems.forEach((i, idx) => {
+    const done = i.scannedCount >= i.quantity;
+
+    if (currentFilter === 'done' && !done) return;
+    if (currentFilter === 'progress' && done) return;
+
+    const rowId = CSS.escape(i.sku || 'nosku' + idx);
+    const imageUrl = i.imageUrl || '';
+    const unitPrice = i.price ?? 0.0;
+
+    // ✅ 원상품 tr
+    html += `
+      <tr class="${done ? 'table-success' : 'table-warning'}" id="${rowId}">
+        <td>${imageUrl ? `<img src="${imageUrl}" style="width:50px;height:auto;">` : ''}</td>
+        <td>${i.name}</td>
+        <td>${i.MHD ?? ''}</td>
+        <td>${i.sku ?? ''}</td>
+        <td>${unitPrice.toFixed(2)}</td>
+        <td>${i.quantity}</td>
+        <td>${i.scannedCount}</td>
+        <td>${done ? '완료' : '진행중'}</td>
+        <td><button class="btn btn-sm btn-outline-primary inc" data-idx="${idx}">+1</button></td>
+        <td><button class="btn btn-sm btn-outline-danger dec" data-idx="${idx}">-1</button></td>
+        <td><button class="btn btn-sm btn-success scanAll" data-idx="${idx}">완료</button></td>
+        <td><button class="btn btn-sm btn-secondary process" data-idx="${idx}">처리</button></td>
+        <td><button class="btn btn-sm btn-danger addError" data-idx="${idx}">❌ 오류</button></td>
+      </tr>
+    `;
+
+    if (i.processHistory && i.processHistory.length > 0) {
+  i.processHistory.forEach(p => {
+    if (p.type === '대체') {
+      html += `
+        <tr class="table-secondary">
+          <td></td>
+          <td class="text-warning font-weight-bold">
+            ↳ 대체: ${p.productName}
+          </td>
+          <td>${p.MHD || '-'}</td>
+          <td></td>
+          <td>-</td>
+          <td>${p.quantity}</td>
+          <td>${p.quantity}</td>
+          <td>대체</td>
+          <td colspan="5"></td>
+        </tr>
+      `;
     }
+
+    if (p.type === '환불') {
+      html += `
+        <tr class="table-danger">
+          <td></td>
+          <td class="text-danger font-weight-bold">
+            ↳ 환불: ${p.productName}
+          </td>
+          <td>${p.MHD || '-'}</td>
+          <td></td>
+          <td>-</td>
+          <td>${p.quantity}</td>
+          <td>0</td>
+          <td>환불</td>
+          <td colspan="5"></td>
+        </tr>
+      `;
+    }
+
+    if (p.type === '적립') {
+      html += `
+        <tr class="table-info">
+          <td></td>
+          <td class="text-info font-weight-bold">
+            ↳ 적립: ${p.productName}
+          </td>
+          <td>${p.MHD || '-'}</td>
+          <td></td>
+          <td>-</td>
+          <td>${p.quantity}</td>
+          <td>${p.quantity}</td>
+          <td>적립</td>
+          <td colspan="5"></td>
+        </tr>
+      `;
+    }
+  });
+}
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  $('#orderItems').html(html);
+}
 
     // 진행률 업데이트
     function updateProgressBar(){
@@ -285,8 +375,7 @@ let tabsHtml = `
     <!-- 환불 -->
     <div class="tab-pane fade show active" id="refund" role="tabpanel">
       <h6 class="text-danger font-weight-bold">💸 환불 정보 입력</h6>
-      <input class="form-control mb-2" placeholder="환불 상품명" id="refundName">
-      <input class="form-control mb-2" placeholder="유통기한 (YYYY-MM-DD)" id="refundMHD">
+
       <input type="number" class="form-control mb-3" placeholder="환불 수량" id="refundQty" min="1">
       <button class="btn btn-danger btn-block font-weight-bold" id="refundBtn">✅ 환불 완료</button>
     </div>
@@ -294,7 +383,9 @@ let tabsHtml = `
     <!-- 대체 -->
     <div class="tab-pane fade" id="replace" role="tabpanel">
       <h6 class="text-warning font-weight-bold">🔁 대체 상품 입력</h6>
-      <input class="form-control mb-2" placeholder="대체 상품명" id="replaceName">
+      <input class="form-control mb-2" placeholder="대체 상품명" id="replaceName" autocomplete="off">
+<div id="replaceSearchResults" class="list-group position-absolute" style="z-index:1000; display:none;"></div>
+
       <input class="form-control mb-2" placeholder="유통기한 (YYYY-MM-DD)" id="replaceMHD">
       <input type="number" class="form-control mb-3" placeholder="대체 수량" id="replaceQty" min="1">
       <button class="btn btn-warning btn-block font-weight-bold" id="replaceBtn">✅ 대체 완료</button>
@@ -319,8 +410,9 @@ let tabsHtml = `
     if (!qty || qty < 1) return alert('수량 입력 필요');
     const entry = {
       type: '환불',
-      productName: $('#refundName').val(),
-      MHD: $('#refundMHD').val(),
+
+      productName: i.name,
+      MHD: i.MHD,
       quantity: qty
     };
     i.processHistory = i.processHistory || [];
@@ -333,21 +425,30 @@ let tabsHtml = `
 
   // ✅ 대체 버튼
   $('#replaceBtn').off('click').on('click', function() {
-    const qty = parseInt($('#replaceQty').val());
-    if (!qty || qty < 1) return alert('수량 입력 필요');
-    const entry = {
-      type: '대체',
-      productName: $('#replaceName').val(),
-      MHD: $('#replaceMHD').val(),
-      quantity: qty
-    };
-    i.processHistory = i.processHistory || [];
-    i.processHistory.push(entry);
+  const qty = parseInt($('#replaceQty').val());
+  if (!qty || qty < 1) return alert('수량 입력 필요');
 
-    $('#log').prepend(`<div class="text-warning">🔁 [${new Date().toLocaleTimeString()}] ${i.name} ${qty}개 대체 처리됨</div>`);
-    $('#processModal').modal('hide');
-    renderOrderItems();
-  });
+  const entry = {
+    type: '대체',
+    productName: $('#replaceName').val(),
+    MHD: $('#replaceMHD').val(),
+    quantity: qty
+  };
+
+  i.processHistory = i.processHistory || [];
+  i.processHistory.push(entry);
+
+  // ✅ 추가해야 하는 핵심 1줄
+  i.scannedCount = Math.max(0, i.scannedCount - qty);
+
+  $('#log').prepend(
+    `<div class="text-warning">🔁 [${new Date().toLocaleTimeString()}] ${i.name} ${qty}개 대체 처리됨</div>`
+  );
+
+  $('#processModal').modal('hide');
+  renderOrderItems();
+});
+
 
   // ✅ 적립 버튼
   $('#pointBtn').off('click').on('click', function() {
@@ -362,6 +463,60 @@ let tabsHtml = `
     renderOrderItems();
   });
 });
+
+let debounceTimer = null;
+
+$(document).on('input', '#replaceName', function() {
+  const query = $(this).val().trim();
+  if (!query) {
+    $('#replaceSearchResults').empty().hide();
+    return;
+  }
+
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    $.ajax({
+      url: '/api/productSearch',
+      type: 'POST',
+      data: { query: query },
+      success: function(results) {
+        let html = '';
+        if (!results || results.length === 0) {
+          html = `<div class="list-group-item">검색 결과 없음</div>`;
+        } else {
+          results.forEach(p => {
+            html += `<button type="button" class="list-group-item list-group-item-action" 
+                         data-name="${p.name}" data-sku="${p.sku}">
+                      ${p.name} (${p.sku})
+                     </button>`;
+          });
+        }
+        $('#replaceSearchResults').html(html).show();
+      },
+      error: function() {
+        $('#replaceSearchResults').html('<div class="list-group-item text-danger">검색 오류</div>').show();
+      }
+    });
+  }, 300);
+});
+
+// 검색 결과 클릭 시 input에 값 채움
+$(document).on('click', '#replaceSearchResults button', function() {
+  const name = $(this).data('name');
+  const sku = $(this).data('sku');
+  $('#replaceName').val(name).data('sku', sku);
+  $('#replaceSearchResults').empty().hide();
+});
+
+// input 밖 클릭 시 결과 숨기기
+$(document).click(function(e) {
+  if (!$(e.target).closest('#replaceName, #replaceSearchResults').length) {
+    $('#replaceSearchResults').empty().hide();
+  }
+});
+
+
+
 // 저장 버튼 클릭 시
     // -------------------
     $('#saveButton').click(function () {

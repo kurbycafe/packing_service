@@ -238,30 +238,6 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
     }
 
 
-@PostMapping("/productSearch")
-@ResponseBody
-public String productSearch(@RequestParam("query") String query)
-        throws IOException, InterruptedException {
-
-    System.err.println("request received: " + query);
-
-    String url = String.format(
-            "https://dawayo.de/wp-json/wc/v3/products?search=%s&consumer_key=%s&consumer_secret=%s",
-            query, consumer_key, consumer_secret);
-
-    HttpClient client = HttpClient.newHttpClient();
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Basic " + Base64.getEncoder()
-                    .encodeToString((consumer_key + ":" + consumer_secret).getBytes()))
-            .build();
-
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-    System.err.println("API Response: " + response.body());
-
-    return response.body();
-}
 
 
 }
