@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; } /* 한글 폰트 설정 필요 */
+        .page-break { page-break-after: always; }
+        .category-title { font-size: 24px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-top: 30px; }
+        .product-grid { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .product-card { border: 1px solid #ddd; padding: 15px; text-align: center; width: 30%; }
+        .product-img { width: 150px; height: 150px; }
+        .product-name { font-weight: bold; margin-top: 10px; }
+        .sku { color: #666; font-size: 12px; }
+        .price { color: #d9534f; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Product Catalog</h1>
+    
+    <div th:each="category : ${categories}">
+        <div class="category-title" th:text="${category.name}">카테고리명</div>
+        
+        <table class="product-grid">
+            <tr th:each="item, stat : ${category.items}">
+                <td class="product-card">
+                    <img th:src="${item.product.imageUrl}" class="product-img"><br/>
+                    <div class="product-name" th:text="${item.product.name}">제품명</div>
+                    <div class="sku" th:text="'SKU: ' + ${item.product.sku}">SKU</div>
+                    <div class="price" th:text="${item.product.price} + '원'">가격</div>
+                </td>
+                </tr>
+        </table>
+        <div class="page-break"></div>
+    </div>
+</body>
+</html>

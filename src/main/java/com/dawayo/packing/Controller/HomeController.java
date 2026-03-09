@@ -69,11 +69,13 @@ public String loginPost(UserVO userVO, HttpServletRequest request, HttpServletRe
        }
         
 
-    }
-    System.err.println("Login failed for user: " + userVO.getUserid());
+    }else{
+ System.err.println("Login failed for user: " + userVO.getUserid());
 
     
     return "redirect:/";
+    }
+   
 }
 
 @PostMapping("/logout")
