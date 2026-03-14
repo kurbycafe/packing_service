@@ -71,7 +71,8 @@ public class ProductService {
         m.put("price", p.getPrice());
         m.put("salePrice", p.getSalePrice());
         m.put("wooId", String.valueOf(p.getWooId()));
-
+        m.put("customSku", p.getCustomSku());
+        
         // 가장 빠른 유통기한 하나만
         p.getBatches().stream()
             .map(ProductBatchVO::getExpiryDate)

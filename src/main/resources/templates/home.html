@@ -104,6 +104,8 @@
   <script>
   $(function () {
     let orderItems = [];
+    let processHistory = [];
+
     let scannedErrorItems = [];
     let startTime = null;
     let currentFilter = 'all';
@@ -142,10 +144,6 @@
       code=code.replace(/^0+/,'');
       const found=orderItems.find(i=>i.sku.replace(/^0+/,'')===code || i.name.toLowerCase().includes(code.toLowerCase()));
       if(!found){
-        // 🔊 에러 비프음
-    const beep = new Audio("/error-126627.mp3");
-    beep.volume = 1.0; // 최대 볼륨
-    beep.play();
     alert("등록되지 않은 상품입니다.");  
         $('#log').prepend(`<div class="text-danger">❌ [${new Date().toLocaleTimeString()}] 등록되지 않은 상품: ${code}</div>`);
         scannedErrorItems.push({ name:'미등록', sku:code });
@@ -408,8 +406,9 @@ let tabsHtml = `
   $('#refundBtn').off('click').on('click', function() {
     const qty = parseInt($('#refundQty').val());
     if (!qty || qty < 1) return alert('수량 입력 필요');
+
     const entry = {
-      type: '환불',
+      type: 'R',
 
       productName: i.name,
       MHD: i.MHD,
@@ -429,22 +428,28 @@ let tabsHtml = `
   if (!qty || qty < 1) return alert('수량 입력 필요');
 
   const entry = {
-    type: '대체',
+    //original product info
+    originalproductName: i.name,
+    originalMHD: i.MHD,
+    originalQty: i.quantity,
+    originalSKU: i.sku,
+
+    type: 'E',
     productName: $('#replaceName').val(),
     MHD: $('#replaceMHD').val(),
+    SKU: $('#replaceName').data('sku'),
     quantity: qty
   };
 
   i.processHistory = i.processHistory || [];
   i.processHistory.push(entry);
 
-  // ✅ 추가해야 하는 핵심 1줄
   i.scannedCount = Math.max(0, i.scannedCount - qty);
 
   $('#log').prepend(
-    `<div class="text-warning">🔁 [${new Date().toLocaleTimeString()}] ${i.name} ${qty}개 대체 처리됨</div>`
+    `<div class="text-warning">🔁 [${new Date().toLocaleTimeString()}] ${i.name}가 ${$('#replaceName').val()} ${qty}개 로 대체 처리됨</div>`
   );
-
+  console.log(i.processHistory);
   $('#processModal').modal('hide');
   renderOrderItems();
 });
@@ -454,11 +459,12 @@ let tabsHtml = `
   $('#pointBtn').off('click').on('click', function() {
     const qty = parseInt($('#pointQty').val());
     if (!qty || qty < 1) return alert('수량 입력 필요');
-    const entry = { type: '적립', quantity: qty };
+    const entry = { type: 'P', productName: i.name,
+      MHD: i.MHD,quantity: qty };
     i.processHistory = i.processHistory || [];
     i.processHistory.push(entry);
 
-    $('#log').prepend(`<div class="text-info">💎 [${new Date().toLocaleTimeString()}] ${i.name} ${qty}개 적립 처리됨</div>`);
+    $('#log').prepend(`<div class="text-info">💎 [${new Date().toLocaleTimeString()}] ${i.name} ${qty}개 포인트 적립 처리됨</div>`);
     $('#processModal').modal('hide');
     renderOrderItems();
   });
@@ -467,6 +473,8 @@ let tabsHtml = `
 let debounceTimer = null;
 
 $(document).on('input', '#replaceName', function() {
+  //order number 
+  const orderNumber = $('#orderBarcode').val().trim();
   const query = $(this).val().trim();
   if (!query) {
     $('#replaceSearchResults').empty().hide();
@@ -486,10 +494,15 @@ $(document).on('input', '#replaceName', function() {
           html = `<div class="list-group-item">검색 결과 없음</div>`;
         } else {
           results.forEach(p => {
-            html += `<button type="button" class="list-group-item list-group-item-action" 
-                         data-name="${p.name}" data-sku="${p.sku}" data-expiry-date="${p.expiryDate || ''}"   data-price="${p.price || ''}">
-                      ${p.name} (${p.sku})
-                     </button>`;
+            html += `
+              <button type="button" class="list-group-item list-group-item-action"
+                  data-name="${p.name}"
+                  data-sku="${p.sku}"
+                  data-expiry-date="${p.expiryDate || ''}"
+                  data-price="${p.salePrice == 0.00 ? p.price : p.salePrice}">
+                  ${p.name} (${p.expiryDate}) 
+                  ${(p.salePrice == 0.00 ? p.price : p.salePrice)} €
+              </button>`;
           });
         }
         $('#replaceSearchResults').html(html).show();
@@ -544,7 +557,7 @@ if (!isScanningComplete) {
             productSku: item.sku,
             scannedCount: item.scannedCount
         }));
-        console.log(scannedItems);
+        
 
         const errorItemsPayload = scannedErrorItems.map(item => ({
             orderNumber,
