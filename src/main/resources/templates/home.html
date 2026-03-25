@@ -110,27 +110,65 @@
     let progressTimer = null;
 
     // 주문번호 스캔
-    $('#orderBarcode').keydown(function(e){
-      if(e.key!=='Enter') return;
-      e.preventDefault();
-      const orderNumber=$(this).val().trim();
-      if(!orderNumber) return;
-      $('#loadingIndicator').show();
-      $.post('/api/getOrderDetail',{ orderNumber },function(response){
-        $('#loadingIndicator').hide();
-        try{ response=typeof response==='string'?JSON.parse(response):response; }catch{ alert('응답 오류'); return; }
-        if(response.length){
-          startTime=Date.now();
-          orderItems=response.map((item,i)=>({...item,sku:String(item.sku||'').trim(),scannedCount:0,index:i}));
-          scannedErrorItems=[];
-          renderOrderItems(); updateProgressBar();
-          $('#orderBarcode').prop('disabled',true); $('#productBarcode').prop('disabled',false).focus();
-          localStorage.setItem('scanProgress',JSON.stringify(orderItems));
-          localStorage.setItem('scanStartTime',startTime);
-          startTimer();
-        }else alert('주문 없음');
-      });
+$('#orderBarcode').keydown(function(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  
+  const orderNumber = $(this).val().trim();
+  if (!orderNumber) return;
+
+  $('#loadingIndicator').show();
+
+  // $.post 후 .done(), .fail(), .always() 체이닝 사용
+  $.post('/api/getOrderDetail', { orderNumber })
+    .done(function(response) {
+      // HTTP 상태 코드 200 (성공) 일 때 실행
+      try { 
+        response = typeof response === 'string' ? JSON.parse(response) : response; 
+      } catch(err) { 
+        alert('응답 파싱 오류'); 
+        return; 
+      }
+      
+      if (response && response.length) {
+        startTime = Date.now();
+        orderItems = response.map((item, i) => ({
+          ...item, 
+          sku: String(item.sku || '').trim(), 
+          scannedCount: 0, 
+          index: i
+        }));
+        scannedErrorItems = [];
+        
+        renderOrderItems(); 
+        updateProgressBar();
+        
+        $('#orderBarcode').prop('disabled', true); 
+        $('#productBarcode').prop('disabled', false).focus();
+        
+        localStorage.setItem('scanProgress', JSON.stringify(orderItems));
+        localStorage.setItem('scanStartTime', startTime);
+        startTimer();
+      } else {
+        alert('주문에 해당하는 상품 내역이 없습니다.');
+        $('#orderBarcode').val('').focus();
+      }
+    })
+    .fail(function(xhr) {
+      // HTTP 상태 코드 400, 404, 500 (실패) 일 때 실행
+      // 백엔드에서 body("이미 존재하는...") 로 보낸 메시지가 xhr.responseText에 담깁니다.
+      const errorMessage = xhr.responseText || "주문 정보를 가져오는 중 오류가 발생했습니다.";
+      
+      alert(errorMessage);
+      
+      // 에러 발생 시 입력창을 비워주고 다시 스캔할 수 있도록 포커스 부여
+      $('#orderBarcode').val('').focus(); 
+    })
+    .always(function() {
+      // 성공/실패 여부와 상관없이 무조건 마지막에 실행
+      $('#loadingIndicator').hide();
     });
+});
 
     // 상품 바코드 스캔
     $('#productBarcode').keydown(function(e){

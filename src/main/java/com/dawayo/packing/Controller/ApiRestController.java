@@ -41,18 +41,16 @@ public class ApiRestController {
     public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber)
             throws IOException, InterruptedException {
 
-        System.err.println("? �ֹ� ��ȣ ��û: " + orderNumber);
-        if (orderService.existsByOrderNumber(orderNumber)) {
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("FEHLER: Order number " + orderNumber + " already exists in the database.");
-        }
 
+        if (orderService.existsByOrderNumber(orderNumber)) {
+        return ResponseEntity.badRequest() // 200 대신 400 에러 반환
+                .body("이미 존재하는 주문 번호입니다: " + orderNumber);
+    }
         String orderUrl = String.format(
                 "https://dawayo.de/wp-json/wc/v3/orders/%s?consumer_key=%s&consumer_secret=%s",
                 orderNumber, consumer_key, consumer_secret);
 
-        System.err.println("? �ֹ� API ��û: " + orderUrl);
+
 
         HttpResponse<String> orderResponse = sendRequest(orderUrl);
         String orderBody = orderResponse.body();
