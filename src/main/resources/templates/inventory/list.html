@@ -2,33 +2,73 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory List</title>
+    <title>Product Catalog</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 20px; background-color: #f8f9fa; }
+        .search-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .search-group { display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex-grow: 1; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        table { width: 100%; border-collapse: collapse; background: white; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #4CAF50; color: white; }
-        tr:hover { background-color: #f5f5f5; }
-        .search-box { margin-bottom: 20px; }
-        input[type="text"] { padding: 8px; width: 300px; }
+        .no-result { text-align: center; padding: 20px; color: #888; }
     </style>
 </head>
-<body>
-      <!-- HEADER -->
-  <div id="custom_header">
-<div th:replace="fragments/header :: header"></div>
-  </div>
-    <h1>Inventory List</h1>
-    
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search by name or SKU...">
-    </div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js">
+    $(document).on('input', '#categoryInput', function() {
+  const query = $(this).val().trim();
+  if (!query) {
+    $('#replaceSearchResults').empty().hide();
+    return;
+  }
 
+    $.ajax({
+      url: '/api/productSearch',
+      type: 'POST',
+      data: { query: query },
+      success: function(results) {
+
+        let html = '';
+        if (!results || results.length === 0) {
+          html = `<div class="list-group-item">검색 결과 없음</div>`;
+        } else {
+          results.forEach(p => {
+            html += `<button type="button" class="list-group-item list-group-item-action" 
+                         data-name="${p.name}" data-sku="${p.sku}" data-expiry-date="${p.expiryDate || ''}"   data-price="${p.price || ''}">
+                      ${p.name} (${p.sku})
+                     </button>`;
+          });
+        }
+        $('#replaceSearchResults').html(html).show();
+      },
+      error: function() {
+        $('#replaceSearchResults').html('<div class="list-group-item text-danger">검색 오류</div>').show();
+      }
+    });
+
+});
+</script>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+
+    <h1>Product Catalog</h1>
+    
+    <div class="search-section">
+  
+            <label for="categoryInput">Category Search:</label>
+            <input type="text" id="categoryInput" name="category" 
+                   th:value="${selectedCategory}" placeholder="Enter category (e.g., Electronics, Furniture)">
+            <button type="submit">Search</button>
+    
+    </div>
+<div id="replaceSearchResults" class="list-group position-absolute" style="z-index:1000; display:none;"></div>
     <table id="inventoryTable">
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Category</th>
                 <th>Name</th>
                 <th>SKU</th>
                 <th>Quantity</th>
@@ -38,24 +78,16 @@
         <tbody>
             <tr th:each="item : ${items}">
                 <td th:text="${item.id}"></td>
-                <td th:text="${item.name}" class="searchable"></td>
-                <td th:text="${item.sku}" class="searchable"></td>
+                <td th:text="${item.category}" style="font-weight: bold; color: #2e7d32;"></td>
+                <td th:text="${item.name}"></td>
+                <td th:text="${item.sku}"></td>
                 <td th:text="${item.quantity}"></td>
-                <td th:text="${'$' + item.price}"></td>
+                <td th:text="${#numbers.formatCurrency(item.price)}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(items)}">
+                <td colspan="6" class="no-result">No products found in this category.</td>
             </tr>
         </tbody>
     </table>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#searchInput').on('keyup', function() {
-                let searchTerm = $(this).val().toLowerCase();
-                $('#inventoryTable tbody tr').filter(function() {
-                    $(this).toggle($(this).text().toLowerCase().indexOf(searchTerm) > -1);
-                });
-            });
-        });
-    </script>
 </body>
 </html>

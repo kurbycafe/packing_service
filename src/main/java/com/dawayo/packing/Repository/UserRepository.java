@@ -20,24 +20,21 @@ public class UserRepository {
     private EntityManager entityManager;
 
     public UserVO login(UserVO userVO) {
-        String userId = userVO.getUserid();
-        String password = userVO.getPassword();
+    String userId = userVO.getUserid();
+    String password = userVO.getPassword();
 
-        
-        UserVO foundUser = entityManager.createQuery("SELECT u FROM UserVO u WHERE u.userid = :userId AND u.password = :password", UserVO.class)
-                                         .setParameter("userId", userId)
-                                         .setParameter("password", password)
-                                         .getSingleResult();    
-        if (foundUser != null) {
-            return foundUser;
-        }
-        else{
-            System.err.println("User not found with ID: " + userId);
-            return null; // Return null if no user found
-        }
-        
-
+    try {
+        return entityManager.createQuery(
+            "SELECT u FROM UserVO u WHERE u.userid = :userId AND u.password = :password", UserVO.class)
+            .setParameter("userId", userId)
+            .setParameter("password", password)
+            .getSingleResult(); 
+    } catch (jakarta.persistence.NoResultException e) {
+        // 결과가 없을 경우 안전하게 null 반환 또는 예외 처리
+        System.err.println("로그인 실패: 아이디나 비밀번호가 틀립니다. (" + userId + ")");
+        return null;
     }
+}
 
     public List<PackingVO> getPackingList(String sessionId) {
       return entityManager.createNativeQuery(

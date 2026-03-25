@@ -228,16 +228,13 @@ private ObjectNode processLineItem(Map<String, Object> item, String orderNumber)
         List<PackingVO> scannedItems = request.getScannedItems();
         List<ScanErrorVO> scannedErrorItems = request.getScannedErrorItems();
 
-        System.out.println("? ���� ������ ��: " + (scannedItems != null ? scannedItems.size() : 0));
-        System.out.println("?? ���� ������ ��: " + (scannedErrorItems != null ? scannedErrorItems.size() : 0));
-
         if (scannedItems != null) orderService.saveAll(scannedItems);
         if (scannedErrorItems != null) orderService.saveAllError(scannedErrorItems);
 
         return ResponseEntity.ok("Scanned items received successfully");
     }
 
-
+    
 
 
 }

@@ -21,18 +21,17 @@ public class ProductVO {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long wooId;           // WooCommerce 상품 ID
-    private String name;          // 상품명
-    private String sku;           // WooCommerce SKU
-    private String customSku;     // custom_product_sku
-    private Integer totalStock;   // 전체 재고 합계
-    private String price;         // 가격 - 원래
-    private String salePrice;     // 가격 - 세일가
+   private Long wooId;
+    private String name;
+    private String sku;
+    private String customSku;
+    private Integer totalStock;
+    private String price;
+    private String salePrice;
+    private String imageUrl; 
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // 연관된 유통기한 재고
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductBatchVO> batches = new ArrayList<>();
+
 }

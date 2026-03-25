@@ -8,6 +8,9 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.util.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +20,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.dawayo.packing.VO.ProductVO;
 import com.dawayo.packing.VO.ProductBatchVO;
 import com.dawayo.packing.Service.ProductService;
-
 
 @RestController
 @RequestMapping("/api")
@@ -37,7 +39,6 @@ public class ProductController {
 
     @GetMapping("/updateProductList")
     public void updateProductList() throws IOException, InterruptedException {
-
         int perPage = 100;
         int page = 1;
 
@@ -45,7 +46,6 @@ public class ProductController {
         HttpClient httpClient = HttpClient.newHttpClient();
 
         while (true) {
-
             String url = String.format(
                 "%s?consumer_key=%s&consumer_secret=%s&per_page=%d&page=%d",
                 baseUrl, consumerKey, consumerSecret, perPage, page
@@ -70,37 +70,35 @@ public class ProductController {
             List<Map<String, Object>> productList =
                     objectMapper.readValue(response.body(), new TypeReference<>() {});
 
-            // 더 이상 데이터가 없으면 종료
-            if (productList.isEmpty()) {
-                break;
-            }
+            if (productList.isEmpty()) break;
 
             for (Map<String, Object> productMap : productList) {
-
                 ProductVO product = new ProductVO();
                 product.setWooId(Long.valueOf(String.valueOf(productMap.get("id"))));
                 product.setName(String.valueOf(productMap.get("name")));
                 product.setSku(String.valueOf(productMap.get("sku")));
 
-                // 가격 처리
+                // [추가] 이미지 URL 추출: images 리스트의 첫 번째 항목에서 src를 가져옴
+                List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
+                if (images != null && !images.isEmpty()) {
+                    product.setImageUrl(String.valueOf(images.get(0).get("src")));
+                }
+
+                // 가격 및 세금 처리
                 String taxClass = String.valueOf(productMap.get("tax_class"));
                 double taxRate = getTaxRate(taxClass);
-
                 double regularPrice = parsePrice(productMap.get("regular_price")) * taxRate;
                 double salePrice = parsePrice(productMap.get("sale_price")) * taxRate;
 
                 product.setPrice(String.format("%.2f", regularPrice));
                 product.setSalePrice(String.format("%.2f", salePrice));
 
-                // batch 처리
+                // Batch 및 MetaData 처리
                 List<ProductBatchVO> batches = new ArrayList<>();
-
-                List<Map<String, Object>> metaData =
-                        (List<Map<String, Object>>) productMap.get("meta_data");
+                List<Map<String, Object>> metaData = (List<Map<String, Object>>) productMap.get("meta_data");
 
                 if (metaData != null) {
                     for (Map<String, Object> meta : metaData) {
-
                         String key = String.valueOf(meta.get("key"));
                         String value = String.valueOf(meta.get("value"));
 
@@ -109,12 +107,9 @@ public class ProductController {
                         }
 
                         if ("_j79_wcxd_expiries".equals(key) && value != null && !value.isEmpty()) {
-
                             String[] entries = value.split(",");
-
                             for (String entry : entries) {
                                 String[] parts = entry.trim().split("x");
-
                                 if (parts.length == 2) {
                                     ProductBatchVO batch = new ProductBatchVO();
                                     batch.setExpiryDate(LocalDate.parse(parts[0].trim()));
@@ -125,14 +120,19 @@ public class ProductController {
                         }
                     }
                 }
-
                 productService.saveOrUpdateProduct(product, batches);
             }
-
             page++;
         }
-
         System.out.println("WooCommerce 상품 동기화 완료");
+    }
+
+    // [추가] 엑셀 다운로드 엔드포인트
+    @GetMapping("/downloadExcel")
+    public void downloadExcel(HttpServletResponse response) throws IOException {
+        // DB에서 전체 상품 리스트 조회 (필요 시 검색 쿼리 적용 가능)
+        List<ProductVO> products = productService.getAllProducts(); 
+        productService.exportToExcelWithImages(products, response);
     }
 
     private double parsePrice(Object priceObj) {
@@ -144,9 +144,7 @@ public class ProductController {
     }
 
     private double getTaxRate(String taxClass) {
-        if (taxClass == null || taxClass.isEmpty() || "0".equals(taxClass)) {
-            return 1.0;
-        }
+        if (taxClass == null || taxClass.isEmpty() || "0".equals(taxClass)) return 1.0;
         return switch (taxClass) {
             case "7" -> 1.07;
             case "19" -> 1.19;
@@ -154,18 +152,9 @@ public class ProductController {
         };
     }
 
-
-    // product_table 에서 비동기로 상품 검색 ,ajax 로 
-
-   @PostMapping("/productSearch")
+    @PostMapping("/productSearch")
     @ResponseBody
     public List<Map<String, String>> productSearch(@RequestParam("query") String query) {
-
-        List<Map<String, String>> results = productService.searchProducts(query);
-System.err.println(results.toString());
- 
-        return results;
+        return productService.searchProducts(query);
     }
-
-    
 }
