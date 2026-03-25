@@ -49,7 +49,6 @@ dependencies {
 
     // Devtools
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-
     // JSON (stable version) — 필요하면 사용
     // implementation 'org.json:json:20230227'
 

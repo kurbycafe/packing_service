@@ -2,13 +2,14 @@ package com.dawayo.packing.Controller;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder; // 추가
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets; // 추가
 import java.time.LocalDate;
 import java.util.*;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +38,9 @@ public class ProductController {
 
     private final ProductService productService;
 
+    /**
+     * WooCommerce API를 호출하여 DB 정보를 최신화합니다.
+     */
     @GetMapping("/updateProductList")
     public void updateProductList() throws IOException, InterruptedException {
         int perPage = 100;
@@ -78,13 +82,13 @@ public class ProductController {
                 product.setName(String.valueOf(productMap.get("name")));
                 product.setSku(String.valueOf(productMap.get("sku")));
 
-                // [추가] 이미지 URL 추출: images 리스트의 첫 번째 항목에서 src를 가져옴
+                // 이미지 URL 추출 (첫 번째 이미지의 src)
                 List<Map<String, Object>> images = (List<Map<String, Object>>) productMap.get("images");
                 if (images != null && !images.isEmpty()) {
                     product.setImageUrl(String.valueOf(images.get(0).get("src")));
                 }
 
-                // 가격 및 세금 처리
+                // 가격 및 세금 처리 로직
                 String taxClass = String.valueOf(productMap.get("tax_class"));
                 double taxRate = getTaxRate(taxClass);
                 double regularPrice = parsePrice(productMap.get("regular_price")) * taxRate;
@@ -93,7 +97,7 @@ public class ProductController {
                 product.setPrice(String.format("%.2f", regularPrice));
                 product.setSalePrice(String.format("%.2f", salePrice));
 
-                // Batch 및 MetaData 처리
+                // Batch(유통기한) 및 메타데이터 처리
                 List<ProductBatchVO> batches = new ArrayList<>();
                 List<Map<String, Object>> metaData = (List<Map<String, Object>>) productMap.get("meta_data");
 
@@ -127,11 +131,24 @@ public class ProductController {
         System.out.println("WooCommerce 상품 동기화 완료");
     }
 
-    // [추가] 엑셀 다운로드 엔드포인트
+    /**
+     * 이미지 포함 엑셀 다운로드 (파일명 한글 깨짐 수정)
+     */
     @GetMapping("/downloadExcel")
     public void downloadExcel(HttpServletResponse response) throws IOException {
-        // DB에서 전체 상품 리스트 조회 (필요 시 검색 쿼리 적용 가능)
+        // 1. DB 데이터 가져오기
         List<ProductVO> products = productService.getAllProducts(); 
+        
+        // 2. 파일명 인코딩 (한글 깨짐 방지)
+        String fileName = "상품리스트_" + LocalDate.now() + ".xlsx";
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                                           .replaceAll("\\+", "%20"); // 공백 처리
+        
+        // 3. 응답 헤더 설정
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encodedFileName);
+        
+        // 4. 서비스 호출하여 엑셀 생성 및 스트리밍
         productService.exportToExcelWithImages(products, response);
     }
 
